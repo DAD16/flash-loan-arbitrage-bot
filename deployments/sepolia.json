@@ -1,0 +1,14 @@
+{
+  "chain": "sepolia",
+  "chainId": 11155111,
+  "deployedAt": "2024-12-31T19:30:00Z",
+  "deployer": "0xADD694d04A52DfB212e965F1A3A61F30d2F7B694",
+  "contracts": {
+    "FlashLoanReceiver": "0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7",
+    "MultiDexRouter": "0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"
+  },
+  "explorer": {
+    "FlashLoanReceiver": "https://sepolia.etherscan.io/address/0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7",
+    "MultiDexRouter": "https://sepolia.etherscan.io/address/0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"
+  }
+}
