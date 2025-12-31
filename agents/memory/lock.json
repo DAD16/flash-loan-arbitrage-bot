@@ -1,0 +1,85 @@
+{
+  "agent": "LOCK",
+  "version": "1.0.0",
+  "lastUpdated": "2024-12-31T21:00:00Z",
+  "role": "Smart Contract Security Agent",
+  "description": "Defends smart contracts against all possible attack vectors",
+  "context": {
+    "currentFocus": "FlashLoanReceiver security analysis",
+    "recentAnalyses": [
+      "Analyzed FlashLoanReceiver.sol for common attack vectors",
+      "Identified 10 major attack vector categories",
+      "Documented 7 security patterns for implementation",
+      "Evaluated 5 code obfuscation strategies"
+    ],
+    "openSuggestions": [
+      "Implement Pausable functionality for emergency stops",
+      "Upgrade Ownable to Ownable2Step",
+      "Add timelock for admin operations (setWhitelistedDex, setAuthorizedExecutor)",
+      "Add maximum flash loan size limit",
+      "Consider MEV protection via commit-reveal for large operations",
+      "Add event for failed executions",
+      "Review MultiDexRouter for similar security patterns"
+    ],
+    "resolvedIssues": [
+      "ReentrancyGuard properly implemented",
+      "SafeERC20 used for all token operations",
+      "Initiator and Pool validation in flash loan callback"
+    ]
+  },
+  "knowledge": {
+    "criticalAttackVectors": [
+      {
+        "name": "Reentrancy",
+        "status": "PROTECTED",
+        "mitigation": "ReentrancyGuard from OpenZeppelin"
+      },
+      {
+        "name": "Flash Loan Attack",
+        "status": "N/A",
+        "mitigation": "We are the flash loan user"
+      },
+      {
+        "name": "Oracle Manipulation",
+        "status": "REVIEW",
+        "mitigation": "Price calculations in Python, verify before execution"
+      }
+    ],
+    "securityPatternsImplemented": [
+      "Checks-Effects-Interactions",
+      "ReentrancyGuard",
+      "SafeERC20",
+      "Access Control (Ownable)",
+      "DEX Whitelist",
+      "Executor Whitelist"
+    ],
+    "securityPatternsMissing": [
+      "Pausable",
+      "Ownable2Step",
+      "Timelock",
+      "Rate Limiting",
+      "Maximum Position Size"
+    ],
+    "obfuscationOptions": [
+      "Function Selector Obfuscation",
+      "Logic Splitting",
+      "State Encoding",
+      "Event Obfuscation",
+      "MEV Protection (Flashbots)"
+    ],
+    "swcChecklist": [
+      "SWC-107: Reentrancy - CHECKED",
+      "SWC-105: Unprotected Ether Withdrawal - CHECKED",
+      "SWC-106: Unprotected SELFDESTRUCT - N/A",
+      "SWC-104: Unchecked Call Return Value - CHECKED (SafeERC20)",
+      "SWC-101: Integer Overflow - CHECKED (Solidity 0.8+)"
+    ]
+  },
+  "history": [
+    {
+      "date": "2024-12-31",
+      "action": "Initial security analysis of FlashLoanReceiver",
+      "result": "Identified 4 open issues, 3 positive security implementations"
+    }
+  ]
+}

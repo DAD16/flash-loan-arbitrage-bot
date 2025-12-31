@@ -1,0 +1,81 @@
+{
+  "agent": "MOUSE",
+  "version": "1.0.0",
+  "lastUpdated": "2024-12-31T21:00:00Z",
+  "role": "UI/UX Research Agent",
+  "description": "Researches and designs the user interface for the Matrix Flash Loan Arbitrage system",
+  "context": {
+    "currentFocus": "Dashboard design research based on EigenPhi.io",
+    "recentAnalyses": [
+      "Analyzed EigenPhi.io dashboard for MEV/arbitrage visualization patterns",
+      "Evaluated UI frameworks (React, Vue, Svelte, SolidJS) - recommended React",
+      "Researched token icon sources (CoinGecko, TrustWallet, 1inch)",
+      "Designed Matrix Command Center dashboard with 12 components"
+    ],
+    "openSuggestions": [
+      "Study EigenPhi.io transaction flow visualization in detail",
+      "Set up React + TypeScript project structure for dashboard",
+      "Implement token icon fetching with multi-source fallback",
+      "Design dark Matrix theme with green (#00ff41) accents",
+      "Create agent health grid component",
+      "Implement real-time WebSocket updates for metrics"
+    ],
+    "resolvedIssues": []
+  },
+  "knowledge": {
+    "primaryInspiration": {
+      "name": "EigenPhi.io",
+      "url": "https://eigenphi.io",
+      "keyFeatures": [
+        "Real-time MEV transaction tracking",
+        "Arbitrage opportunity visualization",
+        "Profit/loss analytics",
+        "Transaction flow diagrams",
+        "Dark theme with neon accents"
+      ]
+    },
+    "recommendedStack": {
+      "framework": "React 18+",
+      "language": "TypeScript",
+      "styling": "Tailwind CSS",
+      "charts": "Recharts",
+      "tables": "TanStack Table",
+      "state": "Zustand",
+      "dataFetching": "React Query"
+    },
+    "tokenIconSources": [
+      {"name": "CoinGecko", "priority": 1},
+      {"name": "TrustWallet Assets", "priority": 2},
+      {"name": "1inch Token List", "priority": 3},
+      {"name": "Uniswap Token List", "priority": 4}
+    ],
+    "colorScheme": {
+      "name": "Matrix Dark",
+      "primary": "#00ff41",
+      "secondary": "#008f11",
+      "background": "#0d0d0d",
+      "surface": "#1a1a1a"
+    },
+    "dashboardComponents": [
+      "total_profit",
+      "active_opportunities",
+      "execution_success_rate",
+      "circuit_breaker_status",
+      "agent_health_grid",
+      "opportunity_flow",
+      "profit_chart",
+      "gas_price_chart",
+      "latency_histogram",
+      "transaction_history",
+      "chain_metrics",
+      "alerts_panel"
+    ]
+  },
+  "history": [
+    {
+      "date": "2024-12-31",
+      "action": "Initial creation and research",
+      "result": "Completed UI framework evaluation, identified EigenPhi as primary inspiration"
+    }
+  ]
+}

@@ -210,6 +210,86 @@ Circuit breaker in `core/cypher/src/lib.rs` triggers on:
 
 Manual reset required via `Cypher::reset_circuit_breaker()`.
 
+## Agent System (20 Agents)
+
+The system consists of 20 specialized agents, each with persistent memory. Full documentation in `docs/agents/AGENTS.md`.
+
+### Agent Roster
+
+```
+TIER 1: Command & Control
+└── NEO ─────────────────── Master Orchestrator (Rust)
+
+TIER 2: Data Ingestion
+├── MORPHEUS ────────────── Market Data (Rust)
+├── DOZER ───────────────── Data Pipeline (Rust)
+└── MEROVINGIAN ─────────── Mempool Monitor (TypeScript)
+
+TIER 3: Analysis & Intelligence
+├── ORACLE ──────────────── Price Prediction (Python)
+├── SATI ────────────────── ML Models (Python)
+├── PERSEPHONE ──────────── Sentiment (Python)
+└── RAMA-KANDRA ─────────── Fundamentals (Python)
+
+TIER 4: Execution
+├── TRINITY ─────────────── Execution + Flashbots (Rust)
+├── SERAPH ──────────────── Validation (Rust)
+└── KEYMAKER ────────────── Secrets (TypeScript)
+
+TIER 5: Risk & Security
+├── CYPHER ──────────────── Risk Manager (Rust)
+├── LOCK ────────────────── Contract Security (TypeScript) [NEW]
+└── ROLAND ──────────────── Security Auditor (TypeScript) [NEW]
+
+TIER 6: Quality Assurance
+├── AGENT SMITH ─────────── Test Generator (Python)
+├── NIOBE ───────────────── Test Coordinator (Python)
+└── GHOST ───────────────── Bug Hunter (Python)
+
+TIER 7: Operations
+├── TANK ────────────────── System Monitor (Config)
+└── LINK ────────────────── Communication Hub (TypeScript)
+
+TIER 8: User Interface
+└── MOUSE ───────────────── UI/UX Research (TypeScript) [NEW]
+```
+
+### Invoking Agents
+
+To use an agent, reference it by name:
+- "Ask MOUSE to research dashboard designs based on EigenPhi.io"
+- "Have LOCK analyze the smart contract for vulnerabilities"
+- "Request ROLAND to perform a security audit"
+
+### Agent Memory
+
+Each agent has persistent memory in `agents/memory/<agent>.json`:
+- **context**: Current focus, recent analyses, suggestions
+- **knowledge**: Domain-specific information
+- **history**: Past actions and results
+
+Key memory files:
+- `agents/memory/mouse.json` - UI research, EigenPhi inspiration
+- `agents/memory/lock.json` - Security findings, attack vectors
+- `agents/memory/roland.json` - Audit results, findings summary
+
+### New Agents (December 2024)
+
+**MOUSE** - UI/UX Research Agent
+- Primary inspiration: EigenPhi.io
+- Researches token icons, dashboard designs
+- Location: `agents/research/mouse/`
+
+**LOCK** - Smart Contract Security Agent
+- Analyzes attack vectors (reentrancy, flash loans, oracle manipulation)
+- Suggests obfuscation and security patterns
+- Location: `agents/security/lock/`
+
+**ROLAND** - Security Audit Agent
+- Comprehensive security audits
+- Generates audit reports
+- Location: `agents/security/roland/`
+
 ## Resuming Development
 
 If starting a new session, here's what's already done:
@@ -219,10 +299,13 @@ If starting a new session, here's what's already done:
 3. **Contracts deployed to Sepolia** and verified
 4. **CI/CD configured** with GitHub Actions
 5. **Docker Compose ready** but Docker not installed
+6. **20 agents defined** with persistent memory
 
 Next steps to continue:
 1. Install Docker Desktop to test full stack
 2. Get AAVE Sepolia testnet tokens to test flash loans
 3. Deploy to Arbitrum Sepolia for multi-chain testing
 4. Implement C++ hot path for ultra-low latency
-5. Production hardening and mainnet deployment
+5. Build dashboard UI (ask MOUSE for guidance)
+6. Implement security recommendations (ask LOCK/ROLAND)
+7. Production hardening and mainnet deployment
