@@ -5,7 +5,6 @@ Predicts the probability of arbitrage opportunity success.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
@@ -19,7 +18,7 @@ class PredictionResult:
     """Result of opportunity prediction."""
     success_probability: float
     confidence: float
-    features: Dict[str, float]
+    features: dict[str, float]
     recommendation: str  # "execute", "skip", "uncertain"
 
 
@@ -37,7 +36,7 @@ class OpportunityPredictor:
 
     def __init__(self):
         self.logger = AgentLogger("SATI-PREDICTOR")
-        self.model: Optional[GradientBoostingClassifier] = None
+        self.model: GradientBoostingClassifier | None = None
         self.scaler = StandardScaler()
         self.is_trained = False
 
@@ -57,9 +56,9 @@ class OpportunityPredictor:
 
     def train(
         self,
-        opportunities: List[Opportunity],
-        outcomes: List[bool],
-    ) -> Dict:
+        opportunities: list[Opportunity],
+        outcomes: list[bool],
+    ) -> dict:
         """Train the model on historical data."""
         if len(opportunities) < 100:
             self.logger.warning("Insufficient training data", count=len(opportunities))
@@ -89,6 +88,7 @@ class OpportunityPredictor:
         feature_importance = dict(zip(
             self.feature_names,
             self.model.feature_importances_,
+            strict=True,
         ))
 
         self.logger.info(
@@ -131,11 +131,11 @@ class OpportunityPredictor:
         return PredictionResult(
             success_probability=prob,
             confidence=confidence,
-            features=dict(zip(self.feature_names, features)),
+            features=dict(zip(self.feature_names, features, strict=True)),
             recommendation=recommendation,
         )
 
-    def _extract_features(self, opportunity: Opportunity) -> List[float]:
+    def _extract_features(self, opportunity: Opportunity) -> list[float]:
         """Extract features from an opportunity."""
         import math
         from datetime import datetime
@@ -172,7 +172,7 @@ class OpportunityPredictor:
     def _heuristic_predict(self, opportunity: Opportunity) -> PredictionResult:
         """Fallback heuristic-based prediction."""
         features = self._extract_features(opportunity)
-        feature_dict = dict(zip(self.feature_names, features))
+        feature_dict = dict(zip(self.feature_names, features, strict=True))
 
         # Simple heuristics
         profit_eth = feature_dict["profit_eth"]
@@ -217,7 +217,7 @@ class OpportunityPredictor:
             recommendation=recommendation,
         )
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get model statistics."""
         return {
             "is_trained": self.is_trained,

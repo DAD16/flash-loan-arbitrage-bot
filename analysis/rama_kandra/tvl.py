@@ -5,7 +5,6 @@ Tracks Total Value Locked across protocols and chains.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from shared import AgentLogger, ChainId, DexId
 
@@ -48,11 +47,11 @@ class TVLTracker:
         self.logger = AgentLogger("RAMA-KANDRA-TVL")
 
         # TVL storage
-        self.protocol_tvl: Dict[str, ProtocolTVL] = {}
-        self.pool_tvl: Dict[str, PoolTVL] = {}
+        self.protocol_tvl: dict[str, ProtocolTVL] = {}
+        self.pool_tvl: dict[str, PoolTVL] = {}
 
         # Historical snapshots (hourly)
-        self.tvl_history: List[Dict[str, float]] = []
+        self.tvl_history: list[dict[str, float]] = []
         self.max_history = 168  # 1 week hourly
 
         self.logger.info("TVL tracker initialized")
@@ -80,7 +79,7 @@ class TVLTracker:
         key = f"{tvl.chain.value}_{tvl.pool_address}"
         self.pool_tvl[key] = tvl
 
-    def get_protocol_tvl(self, protocol: str, chain: ChainId) -> Optional[ProtocolTVL]:
+    def get_protocol_tvl(self, protocol: str, chain: ChainId) -> ProtocolTVL | None:
         """Get TVL for a specific protocol."""
         key = f"{protocol}_{chain.value}"
         return self.protocol_tvl.get(key)
@@ -105,7 +104,7 @@ class TVLTracker:
         self,
         chain: ChainId,
         limit: int = 10,
-    ) -> List[PoolTVL]:
+    ) -> list[PoolTVL]:
         """Get top pools by TVL on a chain."""
         chain_pools = [
             tvl for tvl in self.pool_tvl.values()
@@ -116,7 +115,7 @@ class TVLTracker:
     def get_growing_protocols(
         self,
         min_growth_pct: float = 5.0,
-    ) -> List[ProtocolTVL]:
+    ) -> list[ProtocolTVL]:
         """Get protocols with significant TVL growth."""
         return [
             tvl for tvl in self.protocol_tvl.values()
@@ -126,7 +125,7 @@ class TVLTracker:
     def get_declining_protocols(
         self,
         max_decline_pct: float = -5.0,
-    ) -> List[ProtocolTVL]:
+    ) -> list[ProtocolTVL]:
         """Get protocols with significant TVL decline."""
         return [
             tvl for tvl in self.protocol_tvl.values()
@@ -151,7 +150,7 @@ class TVLTracker:
         if len(self.tvl_history) > self.max_history:
             self.tvl_history = self.tvl_history[-self.max_history:]
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get tracker statistics."""
         return {
             "protocols_tracked": len(self.protocol_tvl),

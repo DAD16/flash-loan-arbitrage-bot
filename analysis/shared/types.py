@@ -4,7 +4,6 @@ Shared types for Matrix Python agents.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
 
 
 class ChainId(str, Enum):
@@ -83,7 +82,7 @@ class Opportunity:
     chain: ChainId
     profit_wei: int
     gas_estimate: int
-    path: List[SwapStep]
+    path: list[SwapStep]
     flash_loan_token: str
     flash_loan_amount: int
     confidence: float = 0.0  # 0-1
@@ -108,4 +107,4 @@ class AgentHealth:
     status: AgentStatus
     last_heartbeat_ms: int
     error_count: int
-    metrics: Dict[str, float] = field(default_factory=dict)
+    metrics: dict[str, float] = field(default_factory=dict)

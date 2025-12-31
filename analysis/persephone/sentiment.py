@@ -4,7 +4,6 @@ PERSEPHONE - Sentiment Analysis Implementation
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
 
 from shared import AgentLogger
 
@@ -25,8 +24,8 @@ class SentimentSignal:
     timestamp_ms: int
     sentiment_score: float  # -1 to 1
     confidence: float  # 0 to 1
-    keywords: List[str]
-    raw_text: Optional[str] = None
+    keywords: list[str]
+    raw_text: str | None = None
 
 
 @dataclass
@@ -35,7 +34,7 @@ class MarketSentiment:
     level: SentimentLevel
     score: float  # -1 to 1
     confidence: float
-    signals: List[SentimentSignal]
+    signals: list[SentimentSignal]
     recommendation: str  # "bullish", "bearish", "neutral"
 
 
@@ -52,7 +51,7 @@ class SentimentAnalyzer:
 
     def __init__(self):
         self.logger = AgentLogger("PERSEPHONE")
-        self.signals: List[SentimentSignal] = []
+        self.signals: list[SentimentSignal] = []
         self.max_signals = 1000
 
         # Keywords for sentiment analysis
@@ -171,9 +170,9 @@ class SentimentAnalyzer:
             recommendation=recommendation,
         )
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get analyzer statistics."""
         return {
             "total_signals": len(self.signals),
-            "sources": list(set(s.source for s in self.signals)),
+            "sources": list({s.source for s in self.signals}),
         }

@@ -4,7 +4,7 @@ Logging utilities for Matrix Python agents.
 
 import logging
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 import structlog
 from structlog.types import Processor

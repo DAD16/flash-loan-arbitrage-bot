@@ -8,7 +8,7 @@ Understands the underlying value and tokenomics. Tracks TVL,
 liquidity, and protocol health to identify sustainable opportunities.
 """
 
-from .tvl import TVLTracker
 from .liquidity import LiquidityAnalyzer
+from .tvl import TVLTracker
 
 __all__ = ["TVLTracker", "LiquidityAnalyzer"]

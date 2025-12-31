@@ -4,7 +4,6 @@ Configuration management for Matrix Python agents.
 
 import os
 from functools import lru_cache
-from typing import Dict, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -15,7 +14,7 @@ class RpcConfig(BaseSettings):
     name: str = ""
     http_url: str = ""
     ws_url: str = ""
-    api_key: Optional[str] = None
+    api_key: str | None = None
     priority: int = 0
     max_retries: int = 3
     timeout_ms: int = 5000
@@ -57,7 +56,7 @@ class RedisConfig(BaseSettings):
     host: str = "localhost"
     port: int = 6379
     db: int = 0
-    password: Optional[str] = None
+    password: str | None = None
 
 
 class DatabaseConfig(BaseSettings):
@@ -101,8 +100,8 @@ class MatrixConfig(BaseSettings):
     bsc_ws_url: str = Field(default="wss://bsc-ws-node.nariox.org")
 
     # LLM API Keys (optional)
-    openai_api_key: Optional[str] = Field(default=None)
-    anthropic_api_key: Optional[str] = Field(default=None)
+    openai_api_key: str | None = Field(default=None)
+    anthropic_api_key: str | None = Field(default=None)
 
     def is_production(self) -> bool:
         """Check if running in production."""
@@ -135,7 +134,7 @@ class MatrixConfig(BaseSettings):
         return urls.get(chain, "")
 
 
-@lru_cache()
+@lru_cache
 def get_config() -> MatrixConfig:
     """Get cached configuration instance."""
     # Load .env file if present

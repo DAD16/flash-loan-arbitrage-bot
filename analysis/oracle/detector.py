@@ -5,10 +5,10 @@ Detects arbitrage opportunities across DEXs.
 """
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Set
 
-from shared import AgentLogger, ChainId, DexId, Opportunity, PriceUpdate, SwapStep
+from shared import AgentLogger, ChainId, Opportunity, SwapStep
 
 from .aggregator import PriceAggregator
 
@@ -16,7 +16,7 @@ from .aggregator import PriceAggregator
 @dataclass
 class TokenGraph:
     """Graph of tokens and their swap paths."""
-    edges: Dict[str, List[tuple]]  # token -> [(other_token, pool, dex, price)]
+    edges: dict[str, list[tuple]]  # token -> [(other_token, pool, dex, price)]
 
 
 class ArbitrageDetector:
@@ -41,7 +41,7 @@ class ArbitrageDetector:
         self.gas_price_gwei = gas_price_gwei
 
         # Callback for detected opportunities
-        self.opportunity_handlers: List[Callable[[Opportunity], None]] = []
+        self.opportunity_handlers: list[Callable[[Opportunity], None]] = []
 
         # Statistics
         self.opportunities_found = 0
@@ -57,7 +57,7 @@ class ArbitrageDetector:
         """Register opportunity handler."""
         self.opportunity_handlers.append(handler)
 
-    def scan(self, chain: ChainId) -> List[Opportunity]:
+    def scan(self, chain: ChainId) -> list[Opportunity]:
         """Scan for arbitrage opportunities on a chain."""
         start_time = time.time()
         opportunities = []
@@ -98,7 +98,7 @@ class ArbitrageDetector:
 
     def _build_graph(self, chain: ChainId) -> TokenGraph:
         """Build token graph from aggregator prices."""
-        edges: Dict[str, List[tuple]] = {}
+        edges: dict[str, list[tuple]] = {}
 
         for key, prices in self.aggregator.prices.items():
             if key[0] != chain:
@@ -134,7 +134,7 @@ class ArbitrageDetector:
 
         return TokenGraph(edges=edges)
 
-    def _get_base_tokens(self, chain: ChainId) -> List[str]:
+    def _get_base_tokens(self, chain: ChainId) -> list[str]:
         """Get base tokens to start cycle search from."""
         # These should be loaded from config, using placeholders
         base_tokens = {
@@ -166,14 +166,14 @@ class ArbitrageDetector:
         self,
         graph: TokenGraph,
         start_token: str,
-    ) -> List[List[tuple]]:
+    ) -> list[list[tuple]]:
         """Find all cycles starting and ending at start_token."""
         cycles = []
 
         def dfs(
             current: str,
-            path: List[tuple],
-            visited_pools: Set[str],
+            path: list[tuple],
+            visited_pools: set[str],
         ):
             if len(path) > self.max_path_length:
                 return
@@ -201,8 +201,8 @@ class ArbitrageDetector:
     def _evaluate_cycle(
         self,
         chain: ChainId,
-        cycle: List[tuple],
-    ) -> Optional[Opportunity]:
+        cycle: list[tuple],
+    ) -> Opportunity | None:
         """Evaluate if a cycle is profitable."""
         if not cycle:
             return None
@@ -274,7 +274,7 @@ class ArbitrageDetector:
             confidence=min(1.0, profit_bps / 100),  # Higher profit = higher confidence
         )
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get detector statistics."""
         return {
             "opportunities_found": self.opportunities_found,

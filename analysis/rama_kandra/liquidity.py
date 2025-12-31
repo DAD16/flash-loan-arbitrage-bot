@@ -5,7 +5,6 @@ Analyzes liquidity depth and health across pools.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from shared import AgentLogger, ChainId, DexId
 
@@ -16,8 +15,8 @@ class LiquidityDepth:
     pool_address: str
     chain: ChainId
     dex: DexId
-    bid_depth_usd: Dict[float, float]  # price_pct -> liquidity
-    ask_depth_usd: Dict[float, float]
+    bid_depth_usd: dict[float, float]  # price_pct -> liquidity
+    ask_depth_usd: dict[float, float]
     timestamp_ms: int
 
 
@@ -27,8 +26,8 @@ class LiquidityHealth:
     pool_address: str
     chain: ChainId
     health_score: float  # 0-1
-    issues: List[str]
-    recommendations: List[str]
+    issues: list[str]
+    recommendations: list[str]
 
 
 class LiquidityAnalyzer:
@@ -51,7 +50,7 @@ class LiquidityAnalyzer:
         self.max_imbalance_ratio = max_imbalance_ratio
 
         # Liquidity data
-        self.depths: Dict[str, LiquidityDepth] = {}
+        self.depths: dict[str, LiquidityDepth] = {}
 
         self.logger.info(
             "Liquidity analyzer initialized",
@@ -124,7 +123,7 @@ class LiquidityAnalyzer:
         chain: ChainId,
         trade_size_usd: float,
         is_buy: bool,
-    ) -> Optional[float]:
+    ) -> float | None:
         """Estimate slippage for a trade size."""
         key = f"{chain.value}_{pool_address}"
         depth = self.depths.get(key)
@@ -153,7 +152,7 @@ class LiquidityAnalyzer:
         chain: ChainId,
         trade_size_usd: float,
         max_slippage_bps: int = 50,
-    ) -> List[str]:
+    ) -> list[str]:
         """Get pools suitable for a trade size."""
         suitable = []
 
@@ -173,11 +172,9 @@ class LiquidityAnalyzer:
 
         return suitable
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get analyzer statistics."""
         return {
             "pools_tracked": len(self.depths),
-            "chains": list(set(
-                key.split("_")[0] for key in self.depths.keys()
-            )),
+            "chains": list({key.split("_")[0] for key in self.depths}),
         }

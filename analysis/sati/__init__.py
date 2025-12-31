@@ -7,7 +7,7 @@ Program created from love of patterns, learns optimal strategies.
 Trains models on historical data and predicts opportunity success.
 """
 
-from .models.opportunity_predictor import OpportunityPredictor
 from .models.gas_optimizer import GasOptimizer
+from .models.opportunity_predictor import OpportunityPredictor
 
 __all__ = ["OpportunityPredictor", "GasOptimizer"]

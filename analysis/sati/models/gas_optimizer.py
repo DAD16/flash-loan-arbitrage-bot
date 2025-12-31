@@ -6,7 +6,6 @@ Optimizes gas pricing strategy for transaction submission.
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, List, Optional
 
 import numpy as np
 
@@ -50,7 +49,7 @@ class GasOptimizer:
         self.update_interval_ms = update_interval_ms
 
         # Historical samples
-        self.samples: Deque[GasSample] = deque(maxlen=history_size)
+        self.samples: deque[GasSample] = deque(maxlen=history_size)
 
         # Current estimates
         self.current_base_fee: float = 30.0
@@ -157,7 +156,7 @@ class GasOptimizer:
         }
         return multipliers.get(urgency, 1.5)
 
-    def get_current_prices(self) -> Dict:
+    def get_current_prices(self) -> dict:
         """Get current gas price estimates."""
         return {
             "base_fee_gwei": self.current_base_fee,
@@ -166,7 +165,7 @@ class GasOptimizer:
             "sample_count": len(self.samples),
         }
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get optimizer statistics."""
         if not self.samples:
             return {

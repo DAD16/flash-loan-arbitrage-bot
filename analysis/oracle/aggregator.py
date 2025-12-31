@@ -4,12 +4,10 @@ ORACLE - Price Aggregator
 Aggregates prices from multiple DEXs and data sources.
 """
 
-import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
 
-from shared import AgentLogger, ChainId, DexId, PriceUpdate
+from shared import AgentLogger, ChainId, PriceUpdate
 
 
 @dataclass
@@ -20,7 +18,7 @@ class AggregatedPrice:
     token1: str
     price: int  # Weighted average price (18 decimals)
     confidence: float  # 0-1 based on source count and agreement
-    sources: List[PriceUpdate]
+    sources: list[PriceUpdate]
     timestamp_ms: int
 
 
@@ -41,10 +39,10 @@ class PriceAggregator:
         self.min_sources = min_sources
 
         # Price storage: (chain, token0, token1) -> list of updates
-        self.prices: Dict[tuple, List[PriceUpdate]] = defaultdict(list)
+        self.prices: dict[tuple, list[PriceUpdate]] = defaultdict(list)
 
         # Known pools for fast lookup
-        self.known_pools: Set[str] = set()
+        self.known_pools: set[str] = set()
 
         self.logger.info("Price aggregator initialized")
 
@@ -68,7 +66,7 @@ class PriceAggregator:
         chain: ChainId,
         token0: str,
         token1: str,
-    ) -> Optional[AggregatedPrice]:
+    ) -> AggregatedPrice | None:
         """Get aggregated price for a token pair."""
         key = (chain, token0, token1)
         sources = self.prices.get(key, [])
@@ -115,7 +113,7 @@ class PriceAggregator:
         token_in: str,
         token_out: str,
         is_buy: bool,
-    ) -> Optional[PriceUpdate]:
+    ) -> PriceUpdate | None:
         """Get best price for a swap direction."""
         key = (chain, token_in, token_out)
         sources = self.prices.get(key, [])
@@ -140,7 +138,7 @@ class PriceAggregator:
         chain: ChainId,
         token0: str,
         token1: str,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Get price spread across DEXs."""
         key = (chain, token0, token1)
         sources = self.prices.get(key, [])
@@ -168,7 +166,7 @@ class PriceAggregator:
         self,
         chain: ChainId,
         min_spread_bps: int = 10,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Get all pairs with significant spreads."""
         spreads = []
 
@@ -199,7 +197,7 @@ class PriceAggregator:
 
         return removed
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get aggregator statistics."""
         total_prices = sum(len(v) for v in self.prices.values())
         unique_pairs = len(self.prices)
