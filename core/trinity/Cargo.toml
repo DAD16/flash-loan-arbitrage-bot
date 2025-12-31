@@ -28,6 +28,9 @@ ethers-signers.workspace = true
 # HTTP client for Flashbots
 reqwest.workspace = true
 
+# Hashing (for Flashbots signature placeholder)
+md5 = "0.7"
+
 [dev-dependencies]
 mockall.workspace = true
 tokio-test = "0.4"

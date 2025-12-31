@@ -11,11 +11,16 @@ import {IMultiDexRouter} from "../src/interfaces/IMultiDexRouter.sol";
  * @notice Deployment script for Matrix contracts
  */
 contract DeployScript is Script {
-    // Aave V3 Pool Address Providers
+    // Aave V3 Pool Address Providers (Mainnet)
     address constant AAVE_ETHEREUM = 0x2f39d218133AFaB8F2B819B1066c7E434Ad94E9e;
     address constant AAVE_ARBITRUM = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
     address constant AAVE_OPTIMISM = 0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb;
     address constant AAVE_BASE = 0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D;
+    address constant AAVE_BSC = 0xff75B6da14FfbbfD355Daf7a2731456b3562Ba6D;
+
+    // Aave V3 Pool Address Providers (Testnet)
+    address constant AAVE_SEPOLIA = 0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A;
+    address constant AAVE_ARBITRUM_SEPOLIA = 0x4c5F46a1aB6F1AF50F87beEfC42F01FB3E3c0c2e;
 
     // DEX Routers
     address constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -53,10 +58,15 @@ contract DeployScript is Script {
     }
 
     function _getAaveProvider() internal view returns (address) {
+        // Mainnets
         if (block.chainid == 1) return AAVE_ETHEREUM;
         if (block.chainid == 42161) return AAVE_ARBITRUM;
         if (block.chainid == 10) return AAVE_OPTIMISM;
         if (block.chainid == 8453) return AAVE_BASE;
+        if (block.chainid == 56) return AAVE_BSC;
+        // Testnets
+        if (block.chainid == 11155111) return AAVE_SEPOLIA;
+        if (block.chainid == 421614) return AAVE_ARBITRUM_SEPOLIA;
         revert("Unsupported chain");
     }
 

@@ -1,0 +1,167 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - testnet
+          - mainnet
+      chain:
+        description: 'Target chain'
+        required: true
+        type: choice
+        options:
+          - sepolia
+          - arbitrum-sepolia
+          - optimism-sepolia
+          - base-sepolia
+          - ethereum
+          - arbitrum
+          - optimism
+          - base
+          - bsc
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  validate:
+    name: Validate Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      is_testnet: ${{ steps.check.outputs.is_testnet }}
+
+    steps:
+      - name: Check environment consistency
+        id: check
+        run: |
+          if [[ "${{ inputs.environment }}" == "testnet" ]]; then
+            if [[ ! "${{ inputs.chain }}" =~ -sepolia$ ]]; then
+              echo "Error: Testnet environment requires a sepolia chain"
+              exit 1
+            fi
+            echo "is_testnet=true" >> $GITHUB_OUTPUT
+          else
+            if [[ "${{ inputs.chain }}" =~ -sepolia$ ]]; then
+              echo "Error: Mainnet environment cannot use sepolia chains"
+              exit 1
+            fi
+            echo "is_testnet=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-contracts:
+    name: Build Contracts
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: cd contracts && forge install
+
+      - name: Build contracts
+        run: cd contracts && forge build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: contract-artifacts
+          path: contracts/out/
+
+  deploy-contracts:
+    name: Deploy Contracts
+    runs-on: ubuntu-latest
+    needs: [validate, build-contracts]
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: contract-artifacts
+          path: contracts/out/
+
+      - name: Set RPC URL
+        id: rpc
+        run: |
+          case "${{ inputs.chain }}" in
+            sepolia)
+              echo "url=${{ secrets.SEPOLIA_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            arbitrum-sepolia)
+              echo "url=${{ secrets.ARBITRUM_SEPOLIA_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            optimism-sepolia)
+              echo "url=${{ secrets.OPTIMISM_SEPOLIA_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            base-sepolia)
+              echo "url=${{ secrets.BASE_SEPOLIA_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            ethereum)
+              echo "url=${{ secrets.ETH_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            arbitrum)
+              echo "url=${{ secrets.ARBITRUM_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            optimism)
+              echo "url=${{ secrets.OPTIMISM_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            base)
+              echo "url=${{ secrets.BASE_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            bsc)
+              echo "url=${{ secrets.BSC_RPC_URL }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Deploy FlashLoanReceiver
+        run: |
+          cd contracts
+          forge script script/Deploy.s.sol:DeployScript \
+            --rpc-url ${{ steps.rpc.outputs.url }} \
+            --private-key ${{ secrets.DEPLOYER_PRIVATE_KEY }} \
+            --broadcast \
+            --verify
+        env:
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
+      - name: Save deployment addresses
+        run: |
+          echo "Deployment to ${{ inputs.chain }} complete"
+          echo "Check contracts/broadcast/ for deployment details"
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: deploy-contracts
+    if: always()
+
+    steps:
+      - name: Send notification
+        run: |
+          if [ "${{ needs.deploy-contracts.result }}" == "success" ]; then
+            echo "Deployment to ${{ inputs.chain }} succeeded!"
+          else
+            echo "Deployment to ${{ inputs.chain }} failed!"
+          fi

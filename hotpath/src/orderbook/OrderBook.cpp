@@ -1,4 +1,5 @@
 #include "orderbook/OrderBook.hpp"
+#include <algorithm>
 
 namespace matrix::orderbook {
 
@@ -25,7 +26,7 @@ size_t OrderBook::process_updates(PriceQueue& queue) noexcept {
 
 void OrderBook::update_pool(const PriceUpdate& update) noexcept {
     // Get or create pool
-    PoolState* pool = get_or_create_pool(update.pool_address_hash);
+    PoolState* pool = get_or_create_pool(update.pool_hash);
     if (!pool) return;
 
     // Update pool state

@@ -124,6 +124,7 @@ private:
  */
 struct PriceUpdate {
     uint64_t timestamp_ns;      // Nanosecond timestamp
+    uint64_t pool_hash;         // Pool address hash (keccak256 truncated)
     uint32_t chain_id;          // Chain identifier (1=ETH, 42161=ARB, etc.)
     uint32_t dex_id;            // DEX identifier
     uint64_t token0;            // Token 0 address hash

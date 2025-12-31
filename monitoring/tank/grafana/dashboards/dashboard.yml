@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'Matrix Dashboards'
+    orgId: 1
+    folder: 'Matrix'
+    folderUid: 'matrix'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards

@@ -1,0 +1,138 @@
+groups:
+  - name: matrix_agent_alerts
+    rules:
+      # Agent down alerts
+      - alert: AgentDown
+        expr: up{job=~"matrix-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Agent {{ $labels.instance }} is down"
+          description: "Agent {{ $labels.instance }} has been down for more than 1 minute."
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(matrix_errors_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.agent }}"
+          description: "Error rate is {{ $value }} errors/sec for agent {{ $labels.agent }}."
+
+      # Execution failures
+      - alert: ExecutionFailures
+        expr: rate(matrix_execution_failures_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High execution failure rate"
+          description: "Execution failure rate is {{ $value }} failures/sec."
+
+  - name: matrix_performance_alerts
+    rules:
+      # High latency
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, rate(matrix_execution_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High execution latency"
+          description: "P99 latency is {{ $value }}s, above 500ms threshold."
+
+      # Low opportunity detection
+      - alert: LowOpportunityRate
+        expr: rate(matrix_opportunities_detected_total[15m]) < 0.1
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low opportunity detection rate"
+          description: "Only {{ $value }} opportunities/sec detected in last 15 minutes."
+
+      # Mempool connection issues
+      - alert: MempoolDisconnected
+        expr: matrix_mempool_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mempool connection lost on {{ $labels.chain }}"
+          description: "Mempool subscription for {{ $labels.chain }} is disconnected."
+
+  - name: matrix_financial_alerts
+    rules:
+      # Negative profit
+      - alert: NegativeProfit
+        expr: sum(rate(matrix_profit_usd_total[1h])) < 0
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Negative profit detected"
+          description: "Net profit is negative ({{ $value }} USD) over the last hour."
+
+      # High gas costs
+      - alert: HighGasCosts
+        expr: rate(matrix_gas_spent_wei_total[5m]) / rate(matrix_profit_wei_total[5m]) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High gas costs relative to profit"
+          description: "Gas costs are {{ $value | humanizePercentage }} of profit."
+
+      # Circuit breaker triggered
+      - alert: CircuitBreakerTriggered
+        expr: matrix_circuit_breaker_state == 1
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker triggered"
+          description: "Trading circuit breaker has been triggered. Manual intervention required."
+
+  - name: matrix_infrastructure_alerts
+    rules:
+      # Redis connection
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis server is not responding."
+
+      # Kafka connection
+      - alert: KafkaDown
+        expr: kafka_brokers < 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka cluster is down"
+          description: "No Kafka brokers available."
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 4000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}MB."
+
+      # RPC rate limiting
+      - alert: RPCRateLimited
+        expr: rate(matrix_rpc_rate_limited_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RPC rate limiting detected on {{ $labels.chain }}"
+          description: "RPC requests are being rate limited at {{ $value }}/sec."

@@ -10,9 +10,13 @@
 //! - Submit via Flashbots
 //! - Handle transaction failures
 
+pub mod flashbots;
+
 use async_trait::async_trait;
 use ethers::types::{Address, U256, Bytes, H256};
 use thiserror::Error;
+
+pub use flashbots::{FlashbotsClient, Bundle, BundleBuilder, SimulationResult};
 
 /// Trinity execution errors
 #[derive(Error, Debug)]

@@ -2,11 +2,19 @@
 #include <cstdlib>
 #include <cstring>
 
+#ifdef _WIN32
+#include <malloc.h>
+#endif
+
 namespace matrix::memory {
 
 Arena::Arena(size_t size) : size_(size) {
-    // Allocate aligned memory
+    // Allocate aligned memory (platform-specific)
+#ifdef _WIN32
+    memory_ = static_cast<uint8_t*>(_aligned_malloc(size, CACHE_LINE_SIZE));
+#else
     memory_ = static_cast<uint8_t*>(std::aligned_alloc(CACHE_LINE_SIZE, size));
+#endif
     if (!memory_) {
         throw std::bad_alloc();
     }
@@ -15,7 +23,11 @@ Arena::Arena(size_t size) : size_(size) {
 }
 
 Arena::~Arena() {
+#ifdef _WIN32
+    _aligned_free(memory_);
+#else
     std::free(memory_);
+#endif
 }
 
 void* Arena::allocate(size_t size, size_t alignment) noexcept {

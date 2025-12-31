@@ -1,5 +1,8 @@
 /**
  * MEROVINGIAN - Mempool Monitor Implementation
+ *
+ * Monitors pending transactions across multiple EVM chains.
+ * Detects DEX swaps, large transfers, and potential MEV opportunities.
  */
 
 import { WebSocket } from 'ws';
@@ -7,6 +10,20 @@ import { AgentLogger, type ChainId, type PendingTransaction } from '@matrix/shar
 import type { MempoolConfig, ConnectionStatus } from './types.js';
 
 type TransactionHandler = (tx: PendingTransaction) => void;
+
+interface RpcRequest {
+  jsonrpc: '2.0';
+  id: number;
+  method: string;
+  params: unknown[];
+}
+
+interface RpcResponse {
+  jsonrpc: '2.0';
+  id: number;
+  result?: unknown;
+  error?: { code: number; message: string };
+}
 
 export class Merovingian {
   private logger: AgentLogger;
@@ -187,17 +204,21 @@ export class Merovingian {
       status.pendingTxCount++;
     }
 
-    // For now, just create a minimal pending transaction
-    // In production, we would fetch full transaction details
+    // Fetch full transaction details
+    const txDetails = await this.fetchTransaction(chain, txHash);
+    if (!txDetails) {
+      return; // Transaction may have been dropped or included
+    }
+
     const pendingTx: PendingTransaction = {
       hash: txHash as `0x${string}`,
-      from: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-      to: '0x0000000000000000000000000000000000000000' as `0x${string}`,
-      value: 0n,
-      data: '0x' as `0x${string}`,
-      gasPrice: 0n,
-      gasLimit: 0n,
-      nonce: 0,
+      from: (txDetails.from || '0x0') as `0x${string}`,
+      to: (txDetails.to || '0x0') as `0x${string}`,
+      value: BigInt(txDetails.value || '0'),
+      data: (txDetails.input || '0x') as `0x${string}`,
+      gasPrice: BigInt(txDetails.gasPrice || txDetails.maxFeePerGas || '0'),
+      gasLimit: BigInt(txDetails.gas || '0'),
+      nonce: parseInt(txDetails.nonce || '0', 16),
       chainId: this.getChainId(chain),
       timestampMs: Date.now(),
     };
@@ -210,6 +231,49 @@ export class Merovingian {
         this.logger.error('Handler error', { error: error as Error });
       }
     }
+  }
+
+  /**
+   * Fetch full transaction details via JSON-RPC
+   */
+  private async fetchTransaction(
+    chain: ChainId,
+    txHash: string
+  ): Promise<Record<string, string> | null> {
+    const ws = this.connections.get(chain);
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      const requestId = Date.now();
+      const request: RpcRequest = {
+        jsonrpc: '2.0',
+        id: requestId,
+        method: 'eth_getTransactionByHash',
+        params: [txHash],
+      };
+
+      const timeout = setTimeout(() => {
+        resolve(null);
+      }, 2000); // 2 second timeout
+
+      const messageHandler = (data: Buffer) => {
+        try {
+          const response: RpcResponse = JSON.parse(data.toString());
+          if (response.id === requestId) {
+            clearTimeout(timeout);
+            ws.off('message', messageHandler);
+            resolve(response.result as Record<string, string> | null);
+          }
+        } catch {
+          // Ignore parse errors from subscription messages
+        }
+      };
+
+      ws.on('message', messageHandler);
+      ws.send(JSON.stringify(request));
+    });
   }
 
   /**
