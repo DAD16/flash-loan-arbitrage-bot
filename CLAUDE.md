@@ -210,9 +210,9 @@ Circuit breaker in `core/cypher/src/lib.rs` triggers on:
 
 Manual reset required via `Cypher::reset_circuit_breaker()`.
 
-## Agent System (20 Agents)
+## Agent System (21 Agents)
 
-The system consists of 20 specialized agents, each with persistent memory. Full documentation in `docs/agents/AGENTS.md`.
+The system consists of 21 specialized agents, each with persistent memory. Full documentation in `docs/agents/AGENTS.md`.
 
 ### Agent Roster
 
@@ -252,6 +252,9 @@ TIER 7: Operations
 
 TIER 8: User Interface
 └── MOUSE ───────────────── UI/UX Research (TypeScript) [NEW]
+
+TIER 9: Infrastructure
+└── THE ARCHITECT ───────── Node Infrastructure (TypeScript) [NEW]
 ```
 
 ### Invoking Agents
@@ -260,6 +263,7 @@ To use an agent, reference it by name:
 - "Ask MOUSE to research dashboard designs based on EigenPhi.io"
 - "Have LOCK analyze the smart contract for vulnerabilities"
 - "Request ROLAND to perform a security audit"
+- "Ask THE ARCHITECT to optimize BSC node infrastructure"
 
 ### Agent Memory
 
@@ -272,6 +276,7 @@ Key memory files:
 - `agents/memory/mouse.json` - UI research, EigenPhi inspiration
 - `agents/memory/lock.json` - Security findings, attack vectors
 - `agents/memory/roland.json` - Audit results, findings summary
+- `agents/memory/architect.json` - BSC infrastructure, DEX registry, latency optimization
 
 ### New Agents (December 2024)
 
@@ -290,6 +295,15 @@ Key memory files:
 - Generates audit reports
 - Location: `agents/security/roland/`
 
+**THE ARCHITECT** - Node Infrastructure Agent
+- BSC blockchain focus (primary chain)
+- DEX registry with router addresses
+- RPC endpoint latency optimization
+- bloXroute BDN integration for MEV
+- Cost analysis ($400-$3,500/month tiers)
+- Works with MOUSE for competitor visualization
+- Location: `agents/infrastructure/architect/`
+
 ## Resuming Development
 
 If starting a new session, here's what's already done:
@@ -299,7 +313,7 @@ If starting a new session, here's what's already done:
 3. **Contracts deployed to Sepolia** and verified
 4. **CI/CD configured** with GitHub Actions
 5. **Docker Compose ready** but Docker not installed
-6. **20 agents defined** with persistent memory
+6. **21 agents defined** with persistent memory
 
 Next steps to continue:
 1. Install Docker Desktop to test full stack

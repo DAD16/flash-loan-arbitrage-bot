@@ -11,12 +11,12 @@ To invoke an agent, reference it by name in your request:
 
 ---
 
-## Complete Agent Roster (20 Agents)
+## Complete Agent Roster (21 Agents)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         THE MATRIX AGENT SYSTEM                              │
-│                            (20 Agents Total)                                 │
+│                            (21 Agents Total)                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 TIER 1: COMMAND & CONTROL
@@ -54,6 +54,9 @@ TIER 7: OPERATIONS
 
 TIER 8: USER INTERFACE
 └── MOUSE ───────────────── UI/UX Research Agent (TypeScript)
+
+TIER 9: INFRASTRUCTURE
+└── THE ARCHITECT ───────── Node Infrastructure & Latency (TypeScript)
 ```
 
 ---
@@ -486,6 +489,69 @@ TIER 8: USER INTERFACE
 
 ---
 
+## Tier 9: Infrastructure
+
+### THE ARCHITECT - Node Infrastructure & Latency Optimization
+**Location**: `agents/infrastructure/architect/`
+**Language**: TypeScript
+**Status**: NEW
+
+**Role**: In The Matrix, The Architect designed and controlled the entire system. This agent designs and optimizes blockchain node infrastructure for maximum performance.
+
+**Capabilities**:
+- Multi-chain node infrastructure design
+- RPC endpoint latency optimization
+- DEX router mapping and integration planning
+- Cost analysis for different infrastructure tiers
+- MEV relay integration (bloXroute BDN)
+- Geographic distribution recommendations
+- WebSocket connection optimization
+- Competitor tracking and analysis
+- MOUSE integration for visualization
+
+**Memory File**: `agents/memory/architect.json`
+
+**Primary Focus**: BSC (BNB Smart Chain)
+- 3-second block time (fastest among target chains)
+- Low gas fees (3-5 gwei typical)
+- High DEX volume ($600M+ daily on PancakeSwap alone)
+
+**BSC DEX Registry**:
+| DEX | Router | Fee | Priority |
+|-----|--------|-----|----------|
+| PancakeSwap V3 | 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4 | 0.01-1% | 1 |
+| PancakeSwap V2 | 0x10ED43C718714eb63d5aA57B78B54704E256024E | 0.25% | 2 |
+| BiSwap | 0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8 | 0.1% | 3 |
+| Thena | 0xd4ae6eCA985340Dd434D38F470aCCce4DC78D109 | 0.01-1% | 4 |
+| MDEX | 0x7DAe51BD3E3376B8c7c4900E9107f12Be3AF1bA8 | 0.3% | 5 |
+
+**RPC Endpoint Recommendations**:
+| Provider | Latency | Cost/mo | Notes |
+|----------|---------|---------|-------|
+| bloXroute BDN | 20ms | $1,250 | RECOMMENDED - 200ms mempool advantage |
+| QuickNode | 50ms | $99 | Good primary RPC |
+| Chainstack | 45ms | $349 | Excellent dedicated nodes |
+| Alchemy | 60ms | $49 | Good fallback |
+
+**Infrastructure Cost Tiers**:
+1. **Budget** ($400/mo): Testing only, 150-300ms latency
+2. **Competitive** ($1,500/mo): Production recommended, <100ms latency
+3. **Enterprise** ($3,500/mo): Maximum advantage, <50ms latency
+
+**Implementation Roadmap**:
+1. Phase 1: Foundation (bloXroute + QuickNode setup)
+2. Phase 2: DEX Integration (top 5 BSC DEXes)
+3. Phase 3: Optimization (Singapore/HK deployment)
+4. Phase 4: Production (monitoring, circuit breakers, go-live)
+
+**Collaboration with MOUSE**:
+- Competitor leaderboard visualization
+- Gas bidding heatmaps
+- Latency comparison dashboards
+- Opportunity win/loss timelines
+
+---
+
 ## Memory System
 
 All agents share a persistent memory system located in `agents/memory/`.
@@ -570,3 +636,4 @@ CYPHER ←→ NEO ←→ Circuit Breaker
 | TANK | 7 | Config | Monitoring |
 | LINK | 7 | TypeScript | Communication |
 | MOUSE | 8 | TypeScript | UI/UX Research |
+| THE ARCHITECT | 9 | TypeScript | Node Infrastructure |

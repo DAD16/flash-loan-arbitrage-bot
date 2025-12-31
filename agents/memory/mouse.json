@@ -1,24 +1,28 @@
 {
   "agent": "MOUSE",
   "version": "1.0.0",
-  "lastUpdated": "2024-12-31T21:00:00Z",
+  "lastUpdated": "2024-12-31T22:00:00Z",
   "role": "UI/UX Research Agent",
   "description": "Researches and designs the user interface for the Matrix Flash Loan Arbitrage system",
   "context": {
-    "currentFocus": "Dashboard design research based on EigenPhi.io",
+    "currentFocus": "Deep analysis of EigenPhi.io dashboard",
     "recentAnalyses": [
       "Analyzed EigenPhi.io dashboard for MEV/arbitrage visualization patterns",
       "Evaluated UI frameworks (React, Vue, Svelte, SolidJS) - recommended React",
       "Researched token icon sources (CoinGecko, TrustWallet, 1inch)",
-      "Designed Matrix Command Center dashboard with 12 components"
+      "Designed Matrix Command Center dashboard with 12 components",
+      "Completed deep dive into EigenPhi transaction flow visualization",
+      "Analyzed EigenTx browser extension architecture"
     ],
     "openSuggestions": [
-      "Study EigenPhi.io transaction flow visualization in detail",
-      "Set up React + TypeScript project structure for dashboard",
-      "Implement token icon fetching with multi-source fallback",
-      "Design dark Matrix theme with green (#00ff41) accents",
-      "Create agent health grid component",
-      "Implement real-time WebSocket updates for metrics"
+      "Implement Sankey-style token flow diagrams like EigenPhi",
+      "Add transaction classification badges (arbitrage, sandwich, liquidation)",
+      "Create P&L summary cards for each transaction",
+      "Build multi-chain selector (ETH, ARB, OP, Base, BSC)",
+      "Implement daily MEV report dashboard section",
+      "Add Blockie-style address avatars",
+      "Create interactive graph nodes for address/token details",
+      "Set up React + TypeScript + Tailwind project structure"
     ],
     "resolvedIssues": []
   },
@@ -26,49 +30,142 @@
     "primaryInspiration": {
       "name": "EigenPhi.io",
       "url": "https://eigenphi.io",
+      "analyzed": "2024-12-31",
       "keyFeatures": [
         "Real-time MEV transaction tracking",
         "Arbitrage opportunity visualization",
-        "Profit/loss analytics",
-        "Transaction flow diagrams",
-        "Dark theme with neon accents"
-      ]
+        "Profit/loss analytics with token amounts",
+        "Transaction flow diagrams (Sankey-style)",
+        "Dark theme with clean typography",
+        "Live updating tables",
+        "Token pair analytics",
+        "Historical performance charts",
+        "Daily MEV reports",
+        "Multi-chain support (ETH, BSC, Polygon, etc.)"
+      ],
+      "eigentxFeatures": {
+        "description": "Transaction flow visualization tool",
+        "components": [
+          "Token flow graphs with nodes and edges",
+          "Nodes represent addresses (ellipse shape)",
+          "Edges represent token transfers",
+          "Clickable nodes for address details",
+          "Balance sheet generation",
+          "Transfer list view"
+        ],
+        "techStack": [
+          "TypeScript (97%)",
+          "Tailwind CSS",
+          "Parcel bundler",
+          "PostCSS"
+        ]
+      },
+      "mevTypes": [
+        "Arbitrage transactions",
+        "Sandwich attacks",
+        "Liquidation events",
+        "Flash loan transactions"
+      ],
+      "dailyReports": {
+        "description": "Dynamic daily MEV data reports",
+        "chains": ["Ethereum", "BSC"],
+        "timeframe": "UTC 00:00:00 to 23:59:59",
+        "metrics": ["Total arbitrage profit", "Transaction counts", "Top bots"]
+      }
+    },
+    "designPatterns": {
+      "layout": {
+        "type": "Single-page application",
+        "framework": "React-based",
+        "navigation": "Top navbar with chain selector",
+        "content": "Card-based dashboard layout"
+      },
+      "colorScheme": {
+        "mode": "Dark-first design",
+        "background": "Black/dark gray (#0d0d0d to #1a1a1a)",
+        "text": "White/light gray",
+        "accent": "Green for profits, red for losses",
+        "secondary": "Blue for links and actions"
+      },
+      "typography": {
+        "monospace": "Consolas for technical data",
+        "dataDisplay": "Tabular numbers for alignment",
+        "sizing": "Compact for data density"
+      },
+      "components": {
+        "addressDisplay": "Blockie avatars + truncated addresses",
+        "tokenDisplay": "Icon + symbol + amount",
+        "transactions": "Expandable rows with flow details",
+        "charts": "Interactive with hover tooltips"
+      }
     },
     "recommendedStack": {
       "framework": "React 18+",
       "language": "TypeScript",
       "styling": "Tailwind CSS",
-      "charts": "Recharts",
+      "bundler": "Vite or Parcel",
+      "charts": "Recharts or D3.js for flow diagrams",
       "tables": "TanStack Table",
       "state": "Zustand",
-      "dataFetching": "React Query"
+      "dataFetching": "React Query + WebSocket",
+      "icons": "react-icons or custom token icons"
     },
     "tokenIconSources": [
-      {"name": "CoinGecko", "priority": 1},
-      {"name": "TrustWallet Assets", "priority": 2},
-      {"name": "1inch Token List", "priority": 3},
-      {"name": "Uniswap Token List", "priority": 4}
+      {"name": "CoinGecko", "priority": 1, "url": "https://api.coingecko.com/api/v3"},
+      {"name": "TrustWallet Assets", "priority": 2, "url": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains"},
+      {"name": "1inch Token List", "priority": 3, "url": "https://tokens.1inch.io/v1.2"},
+      {"name": "Uniswap Token List", "priority": 4, "url": "https://tokens.uniswap.org"}
     ],
     "colorScheme": {
       "name": "Matrix Dark",
       "primary": "#00ff41",
       "secondary": "#008f11",
+      "success": "#00ff41",
+      "danger": "#ff4444",
+      "warning": "#ffbb00",
       "background": "#0d0d0d",
-      "surface": "#1a1a1a"
+      "surface": "#1a1a1a",
+      "surfaceHover": "#252525",
+      "text": "#e0e0e0",
+      "textMuted": "#888888"
     },
     "dashboardComponents": [
-      "total_profit",
-      "active_opportunities",
-      "execution_success_rate",
-      "circuit_breaker_status",
-      "agent_health_grid",
-      "opportunity_flow",
-      "profit_chart",
-      "gas_price_chart",
-      "latency_histogram",
-      "transaction_history",
-      "chain_metrics",
-      "alerts_panel"
+      {
+        "id": "total_profit",
+        "name": "Total Profit Card",
+        "description": "Large metric showing cumulative profit with 24h change",
+        "inspiration": "EigenPhi top metrics bar"
+      },
+      {
+        "id": "transaction_flow",
+        "name": "Transaction Flow Diagram",
+        "description": "Sankey-style visualization of token movements",
+        "inspiration": "EigenTx flow charts"
+      },
+      {
+        "id": "live_transactions",
+        "name": "Live Transaction Feed",
+        "description": "Real-time scrolling list of arbitrage executions",
+        "inspiration": "EigenPhi arbitrage scan"
+      },
+      {
+        "id": "chain_selector",
+        "name": "Chain Selector",
+        "description": "Dropdown/tabs for switching between chains",
+        "inspiration": "EigenPhi multi-chain support"
+      },
+      {
+        "id": "daily_report",
+        "name": "Daily Report Summary",
+        "description": "Summary stats for the current day",
+        "inspiration": "EigenPhi daily MEV reports"
+      },
+      {
+        "id": "agent_status",
+        "name": "Agent Health Grid",
+        "description": "20-agent status grid with health indicators",
+        "inspiration": "Custom for Matrix system"
+      }
     ]
   },
   "history": [
@@ -76,6 +173,11 @@
       "date": "2024-12-31",
       "action": "Initial creation and research",
       "result": "Completed UI framework evaluation, identified EigenPhi as primary inspiration"
+    },
+    {
+      "date": "2024-12-31",
+      "action": "Deep analysis of EigenPhi.io dashboard",
+      "result": "Documented design patterns, EigenTx features, multi-chain support, and recommended implementation approach"
     }
   ]
 }
