@@ -10,5 +10,13 @@
   "explorer": {
     "FlashLoanReceiver": "https://sepolia.etherscan.io/address/0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7",
     "MultiDexRouter": "https://sepolia.etherscan.io/address/0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"
-  }
+  },
+  "verified": true,
+  "configuration": {
+    "aavePoolProvider": "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A",
+    "authorizedExecutors": ["0xADD694d04A52DfB212e965F1A3A61F30d2F7B694"],
+    "whitelistedDexes": ["0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"],
+    "minProfitBps": 10
+  },
+  "status": "ready"
 }
