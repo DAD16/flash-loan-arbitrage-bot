@@ -2,7 +2,7 @@
  * LINK - Kafka Connector
  */
 
-import { Kafka, Consumer, Producer, logLevel } from 'kafkajs';
+import { Kafka, Consumer, Producer, logLevel, type KafkaConfig as KafkaJsConfig } from 'kafkajs';
 import { AgentLogger } from '@matrix/shared';
 import type { KafkaConfig, Message, MessageHandler } from './types.js';
 
@@ -19,17 +19,20 @@ export class KafkaConnector {
     this.handlers = new Map();
     this.isConnected = false;
 
-    this.kafka = new Kafka({
+    // Build Kafka config, handling optional properties to satisfy exactOptionalPropertyTypes
+    const kafkaConfig = {
       clientId: config.clientId,
       brokers: config.brokers,
-      ssl: config.ssl,
-      sasl: config.sasl,
       logLevel: logLevel.WARN,
       retry: {
         initialRetryTime: 100,
         retries: 8,
       },
-    });
+      ...(config.ssl !== undefined ? { ssl: config.ssl } : {}),
+      ...(config.sasl ? { sasl: config.sasl } : {}),
+    } as KafkaJsConfig;
+
+    this.kafka = new Kafka(kafkaConfig);
 
     this.producer = this.kafka.producer();
     this.consumer = this.kafka.consumer({ groupId: config.groupId });

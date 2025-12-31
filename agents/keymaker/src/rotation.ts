@@ -12,7 +12,7 @@ export class SecretRotator {
   private logger: AgentLogger;
   private keymaker: Keymaker;
   private policies: Map<string, RotationPolicy>;
-  private timers: Map<string, NodeJS.Timer>;
+  private timers: Map<string, ReturnType<typeof setInterval>>;
   private callbacks: RotationCallback[];
   private isRunning: boolean;
 

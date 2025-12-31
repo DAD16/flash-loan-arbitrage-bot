@@ -3,7 +3,7 @@
  */
 
 import type { Address } from 'viem';
-import { type ChainId, ChainIdNumber } from './types.js';
+import type { ChainId } from './types.js';
 
 export interface ChainConfig {
   id: ChainId;

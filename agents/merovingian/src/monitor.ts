@@ -249,6 +249,6 @@ export class Merovingian {
       base: 8453,
       bsc: 56,
     };
-    return chainIds[chain];
+    return chainIds[chain] ?? 1;
   }
 }

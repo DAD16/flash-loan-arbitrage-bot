@@ -13,7 +13,7 @@ import type {
 export class Keymaker {
   private logger: AgentLogger;
   private config: VaultConfig;
-  private token: string | null = null;
+  private vaultToken: string | null = null;
   private secretsCache: Map<string, { value: unknown; expiresAt: number }>;
 
   constructor(config: VaultConfig) {
@@ -33,10 +33,10 @@ export class Keymaker {
     try {
       if (this.config.token) {
         // Token-based auth (development)
-        this.token = this.config.token;
+        this.vaultToken = this.config.token;
       } else if (this.config.roleId && this.config.secretId) {
         // AppRole auth (production)
-        this.token = await this.appRoleLogin();
+        this.vaultToken = await this.appRoleLogin();
       } else {
         throw new Error('No authentication method configured');
       }
@@ -167,6 +167,13 @@ export class Keymaker {
   clearCache(): void {
     this.logger.info('Clearing secrets cache');
     this.secretsCache.clear();
+  }
+
+  /**
+   * Check if authenticated with Vault
+   */
+  isAuthenticated(): boolean {
+    return this.vaultToken !== null;
   }
 
   /**

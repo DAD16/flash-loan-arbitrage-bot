@@ -18,7 +18,7 @@ export class Link {
   private subscriptions: Map<string, TopicSubscription[]>;
   private pendingMessages: Map<string, Message>;
   private messageCounter: number;
-  private isRunning: boolean;
+  private running: boolean;
 
   constructor(config: RouterConfig) {
     this.logger = new AgentLogger('LINK');
@@ -26,7 +26,7 @@ export class Link {
     this.subscriptions = new Map();
     this.pendingMessages = new Map();
     this.messageCounter = 0;
-    this.isRunning = false;
+    this.running = false;
 
     // Initialize Kafka if configured
     if (config.kafkaConfig) {
@@ -41,7 +41,7 @@ export class Link {
    */
   async start(): Promise<void> {
     this.logger.info('Starting message router...');
-    this.isRunning = true;
+    this.running = true;
 
     if (this.kafka) {
       await this.kafka.connect();
@@ -60,7 +60,7 @@ export class Link {
    */
   async stop(): Promise<void> {
     this.logger.info('Stopping message router...');
-    this.isRunning = false;
+    this.running = false;
 
     if (this.kafka) {
       await this.kafka.disconnect();
@@ -77,11 +77,16 @@ export class Link {
     handler: MessageHandler<T>,
     filter?: (message: Message<T>) => boolean
   ): void {
-    const subscription: TopicSubscription = {
-      topic,
-      handler: handler as MessageHandler,
-      filter: filter as ((message: Message) => boolean) | undefined,
-    };
+    const subscription: TopicSubscription = filter
+      ? {
+          topic,
+          handler: handler as MessageHandler,
+          filter: filter as (message: Message) => boolean,
+        }
+      : {
+          topic,
+          handler: handler as MessageHandler,
+        };
 
     const existing = this.subscriptions.get(topic) || [];
     existing.push(subscription);
@@ -115,12 +120,14 @@ export class Link {
       id: messageId,
       topic,
       source: this.config.agentId,
-      target: options?.target,
       payload,
       timestamp: Date.now(),
-      correlationId: options?.correlationId,
-      replyTo: options?.replyTo,
     };
+
+    // Only add optional properties if they are defined
+    if (options?.target) message.target = options.target;
+    if (options?.correlationId) message.correlationId = options.correlationId;
+    if (options?.replyTo) message.replyTo = options.replyTo;
 
     await this.sendMessage(message);
 
@@ -177,10 +184,14 @@ export class Link {
       return;
     }
 
-    await this.publish(originalMessage.replyTo, payload, {
+    const options: { target: string; correlationId?: string } = {
       target: originalMessage.source,
-      correlationId: originalMessage.correlationId,
-    });
+    };
+    if (originalMessage.correlationId) {
+      options.correlationId = originalMessage.correlationId;
+    }
+
+    await this.publish(originalMessage.replyTo, payload, options);
   }
 
   /**
@@ -249,6 +260,7 @@ export class Link {
     subscriptions: number;
     pendingRequests: number;
     messagesSent: number;
+    isRunning: boolean;
   } {
     let totalSubscriptions = 0;
     for (const subs of this.subscriptions.values()) {
@@ -259,6 +271,7 @@ export class Link {
       subscriptions: totalSubscriptions,
       pendingRequests: this.pendingMessages.size,
       messagesSent: this.messageCounter,
+      isRunning: this.running,
     };
   }
 }

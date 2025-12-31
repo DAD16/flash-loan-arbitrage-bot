@@ -184,6 +184,13 @@ export class MempoolDetector {
   }
 
   /**
+   * Check if a pool is known
+   */
+  isKnownPool(pool: string): boolean {
+    return this.knownPoolsSet.has(pool.toLowerCase());
+  }
+
+  /**
    * Notify all registered handlers
    */
   private notifyHandlers(opportunity: MevOpportunity): void {
