@@ -1,0 +1,30 @@
+[package]
+name = "neo"
+description = "NEO - The Orchestrator: Master coordinator for all Matrix agents"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+dashmap.workspace = true
+parking_lot.workspace = true
+
+# Agent-specific
+# State management and consensus
+raft = "0.7"
+
+[dev-dependencies]
+mockall.workspace = true
+proptest.workspace = true
+tokio-test = "0.4"

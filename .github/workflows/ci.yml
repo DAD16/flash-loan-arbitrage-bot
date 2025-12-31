@@ -1,0 +1,231 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CARGO_TERM_COLOR: always
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  # ============ Rust ============
+  rust:
+    name: Rust Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test --all-features
+
+  # ============ C++ ============
+  cpp:
+    name: C++ Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: cd build && ctest --output-on-failure
+
+  # ============ TypeScript ============
+  typescript:
+    name: TypeScript Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./agents
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: agents/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  # ============ Python ============
+  python:
+    name: Python Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./analysis
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv pip install -e ".[dev]" --system
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Type check with mypy
+        run: mypy .
+
+      - name: Test with pytest
+        run: pytest --cov=. --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./analysis/coverage.xml
+          flags: python
+
+  # ============ Solidity ============
+  solidity:
+    name: Solidity Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./contracts
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install dependencies
+        run: forge install
+
+      - name: Check formatting
+        run: forge fmt --check
+
+      - name: Build
+        run: forge build
+
+      - name: Test
+        run: forge test -vvv
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+
+      - name: Gas report
+        run: forge test --gas-report
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+
+  # ============ Security ============
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [rust, cpp, typescript, python, solidity]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Slither (Solidity)
+        uses: crytic/slither-action@v0.3.0
+        continue-on-error: true
+        with:
+          target: 'contracts/'
+
+      - name: Run cargo-audit (Rust)
+        run: |
+          cargo install cargo-audit
+          cd core && cargo audit
+
+      - name: Run npm audit (TypeScript)
+        run: cd agents && npm audit --production
+
+  # ============ Docker ============
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [rust, typescript, python]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Python image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./analysis
+          file: ./deploy/docker/Dockerfile.python
+          push: false
+          tags: matrix-analysis:latest
+
+      - name: Build TypeScript image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./agents
+          file: ./deploy/docker/Dockerfile.typescript
+          push: false
+          tags: matrix-agents:latest

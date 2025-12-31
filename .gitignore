@@ -1,0 +1,72 @@
+# ============ Environment ============
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ============ Rust ============
+/core/target/
+**/*.rs.bk
+Cargo.lock
+
+# ============ C++ ============
+/hotpath/build/
+/hotpath/out/
+*.o
+*.a
+*.so
+*.dylib
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# ============ TypeScript/Node ============
+/agents/node_modules/
+/agents/*/node_modules/
+/agents/dist/
+/agents/*/dist/
+*.tsbuildinfo
+.npm
+
+# ============ Python ============
+/analysis/__pycache__/
+/analysis/**/__pycache__/
+/analysis/.venv/
+/analysis/venv/
+/analysis/*.egg-info/
+/analysis/.pytest_cache/
+/analysis/.mypy_cache/
+/analysis/.ruff_cache/
+*.pyc
+*.pyo
+.coverage
+htmlcov/
+
+# ============ Solidity/Foundry ============
+/contracts/out/
+/contracts/cache/
+/contracts/lib/
+/contracts/broadcast/
+
+# ============ IDE ============
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ============ Docker ============
+docker-compose.override.yml
+
+# ============ Data/Logs ============
+*.log
+logs/
+data/
+*.db
+*.sqlite
+
+# ============ Monitoring ============
+/monitoring/tank/grafana/data/
+/monitoring/tank/prometheus/data/

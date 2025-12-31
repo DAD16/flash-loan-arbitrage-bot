@@ -1,0 +1,82 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+cache_path = "cache"
+
+# Compiler settings
+solc_version = "0.8.23"
+optimizer = true
+optimizer_runs = 1000000
+via_ir = true
+
+# EVM settings
+evm_version = "shanghai"
+
+# Gas settings
+gas_limit = 30000000
+gas_price = 100000000000  # 100 gwei
+
+# Fuzz testing
+[fuzz]
+runs = 1000
+max_test_rejects = 65536
+seed = "0x3e8"
+dictionary_weight = 40
+
+# Invariant testing
+[invariant]
+runs = 256
+depth = 15
+fail_on_revert = false
+
+# Formatter
+[fmt]
+line_length = 100
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+multiline_func_header = "attributes_first"
+quote_style = "double"
+number_underscore = "thousands"
+single_line_statement_blocks = "preserve"
+override_spacing = false
+
+# Documentation
+[doc]
+out = "docs"
+title = "Matrix Flash Loan Contracts"
+
+# RPC endpoints for forking
+[rpc_endpoints]
+ethereum = "${ETH_RPC_URL}"
+arbitrum = "${ARB_RPC_URL}"
+optimism = "${OP_RPC_URL}"
+base = "${BASE_RPC_URL}"
+bsc = "${BSC_RPC_URL}"
+
+# Etherscan API keys for verification
+[etherscan]
+ethereum = { key = "${ETHERSCAN_API_KEY}" }
+arbitrum = { key = "${ARBISCAN_API_KEY}" }
+optimism = { key = "${OPTIMISM_ETHERSCAN_API_KEY}" }
+base = { key = "${BASESCAN_API_KEY}" }
+bsc = { key = "${BSCSCAN_API_KEY}" }
+
+# Chain configurations
+[profile.ethereum]
+chain_id = 1
+
+[profile.arbitrum]
+chain_id = 42161
+
+[profile.optimism]
+chain_id = 10
+
+[profile.base]
+chain_id = 8453
+
+[profile.bsc]
+chain_id = 56

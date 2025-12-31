@@ -1,0 +1,31 @@
+[package]
+name = "seraph"
+description = "SERAPH - Transaction Validator: Guardian that validates before execution"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+bytes.workspace = true
+hex.workspace = true
+
+# Web3
+ethers.workspace = true
+ethers-core.workspace = true
+
+# EVM simulation
+revm.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tokio-test = "0.4"

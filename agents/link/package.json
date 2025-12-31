@@ -1,0 +1,20 @@
+{
+  "name": "@matrix/link",
+  "version": "0.1.0",
+  "description": "LINK - Communication Hub for Matrix flash loan arbitrage bot",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@matrix/shared": "workspace:*",
+    "kafkajs": "^2.2.4"
+  }
+}

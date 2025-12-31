@@ -1,0 +1,251 @@
+version: "3.9"
+
+# Matrix Flash Loan Arbitrage Bot - Development Environment
+# Support services only - hot path runs on bare metal
+
+services:
+  # ============ Data Layer ============
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: matrix-postgres
+    environment:
+      POSTGRES_DB: matrix
+      POSTGRES_USER: matrix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-matrix_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U matrix"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - matrix-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: matrix-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - matrix-network
+
+  # ============ Message Queue ============
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: matrix-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    networks:
+      - matrix-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: matrix-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    ports:
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - matrix-network
+
+  # ============ Monitoring ============
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: matrix-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./monitoring/tank/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/tank/prometheus/rules:/etc/prometheus/rules
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - matrix-network
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: matrix-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/tank/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/tank/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - matrix-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: matrix-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - matrix-network
+
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: matrix-alertmanager
+    volumes:
+      - ./monitoring/tank/alerts/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - matrix-network
+
+  # ============ Development Tools ============
+
+  # Anvil for local Ethereum testing
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: matrix-anvil
+    entrypoint: ["anvil", "--host", "0.0.0.0", "--port", "8545", "--chain-id", "31337"]
+    ports:
+      - "8545:8545"
+    networks:
+      - matrix-network
+    profiles:
+      - dev
+
+  # Kafka UI for development
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: matrix-kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: matrix
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    networks:
+      - matrix-network
+    profiles:
+      - dev
+
+  # Redis Commander for development
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: matrix-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - matrix-network
+    profiles:
+      - dev
+
+  # ============ Python Analysis Agents ============
+
+  oracle:
+    build:
+      context: ./analysis
+      dockerfile: ../deploy/docker/Dockerfile.python
+    container_name: matrix-oracle
+    environment:
+      MATRIX_ENVIRONMENT: development
+      MATRIX_KAFKA__BROKERS: kafka:9092
+      MATRIX_REDIS__HOST: redis
+      MATRIX_DATABASE__HOST: postgres
+    volumes:
+      - ./analysis:/app
+    depends_on:
+      - kafka
+      - redis
+      - postgres
+    networks:
+      - matrix-network
+    profiles:
+      - agents
+
+  # ============ TypeScript Agents ============
+
+  merovingian:
+    build:
+      context: ./agents
+      dockerfile: ../deploy/docker/Dockerfile.typescript
+    container_name: matrix-merovingian
+    environment:
+      NODE_ENV: development
+      KAFKA_BROKERS: kafka:9092
+      REDIS_HOST: redis
+    volumes:
+      - ./agents:/app
+      - /app/node_modules
+    depends_on:
+      - kafka
+      - redis
+    networks:
+      - matrix-network
+    profiles:
+      - agents
+
+# ============ Networks ============
+
+networks:
+  matrix-network:
+    driver: bridge
+
+# ============ Volumes ============
+
+volumes:
+  postgres_data:
+  redis_data:
+  zookeeper_data:
+  zookeeper_log:
+  kafka_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:

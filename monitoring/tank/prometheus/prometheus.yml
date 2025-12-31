@@ -1,0 +1,76 @@
+# Prometheus configuration for Matrix Flash Loan Arbitrage Bot
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'matrix'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Rule files
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Rust core agents
+  - job_name: 'matrix-core'
+    static_configs:
+      - targets:
+          - 'host.docker.internal:9091'  # NEO
+          - 'host.docker.internal:9092'  # MORPHEUS
+          - 'host.docker.internal:9093'  # TRINITY
+          - 'host.docker.internal:9094'  # SERAPH
+          - 'host.docker.internal:9095'  # CYPHER
+          - 'host.docker.internal:9096'  # DOZER
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '.*:(\d+)'
+        target_label: port
+      - source_labels: [__address__]
+        target_label: instance
+
+  # Python analysis agents
+  - job_name: 'matrix-analysis'
+    static_configs:
+      - targets:
+          - 'oracle:8000'
+          - 'sati:8000'
+          - 'persephone:8000'
+          - 'rama-kandra:8000'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):\d+'
+        target_label: agent
+
+  # TypeScript agents
+  - job_name: 'matrix-typescript'
+    static_configs:
+      - targets:
+          - 'merovingian:8000'
+          - 'keymaker:8000'
+          - 'link:8000'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.+):\d+'
+        target_label: agent
+
+  # Infrastructure
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']

@@ -1,0 +1,29 @@
+{
+  "name": "@matrix/shared",
+  "version": "0.1.0",
+  "description": "Shared types and utilities for Matrix TypeScript agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": {
+      "import": "./dist/*.js",
+      "types": "./dist/*.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ethers": "^6.9.0",
+    "viem": "^1.19.0",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  }
+}

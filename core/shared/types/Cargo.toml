@@ -1,0 +1,12 @@
+[package]
+name = "matrix-types"
+description = "Shared types for Matrix flash loan arbitrage bot"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+chrono.workspace = true
+ethers-core.workspace = true
+hex.workspace = true

@@ -1,0 +1,27 @@
+[package]
+name = "cypher"
+description = "CYPHER - Risk Manager: Deals with the harsh reality of risk"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+dashmap.workspace = true
+parking_lot.workspace = true
+
+# Metrics for risk monitoring
+prometheus.workspace = true
+
+[dev-dependencies]
+mockall.workspace = true
+tokio-test = "0.4"

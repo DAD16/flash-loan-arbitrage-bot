@@ -1,0 +1,12 @@
+[package]
+name = "matrix-metrics"
+description = "Metrics and monitoring for Matrix flash loan arbitrage bot"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+prometheus.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+tracing.workspace = true
