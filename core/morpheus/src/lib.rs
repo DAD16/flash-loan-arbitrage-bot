@@ -9,10 +9,6 @@
 //! - Ensure data consistency across feeds
 //! - Handle feed failures gracefully
 
-pub mod feeds;
-pub mod websocket;
-pub mod ai_research;
-
 use async_trait::async_trait;
 use matrix_types::{ChainId, DexId, PriceUpdate};
 use thiserror::Error;

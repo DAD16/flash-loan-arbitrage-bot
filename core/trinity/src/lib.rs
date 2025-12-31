@@ -10,10 +10,6 @@
 //! - Submit via Flashbots
 //! - Handle transaction failures
 
-pub mod flashbots;
-pub mod chains;
-pub mod ai_research;
-
 use async_trait::async_trait;
 use ethers::types::{Address, U256, Bytes, H256};
 use thiserror::Error;

@@ -10,10 +10,6 @@
 //! - Handle failover and recovery
 //! - Route opportunities to execution
 
-pub mod supervisor;
-pub mod state;
-pub mod ai_research;
-
 use async_trait::async_trait;
 use thiserror::Error;
 

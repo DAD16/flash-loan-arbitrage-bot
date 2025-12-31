@@ -10,12 +10,8 @@
 //! - Check slippage within limits
 //! - Validate all safety conditions
 
-pub mod simulator;
-pub mod validator;
-pub mod ai_research;
-
 use async_trait::async_trait;
-use ethers_core::types::{Address, U256, Bytes, H256};
+use ethers::types::{Address, U256, Bytes, H256};
 use thiserror::Error;
 
 /// Seraph validation errors

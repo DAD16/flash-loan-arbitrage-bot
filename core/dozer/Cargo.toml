@@ -19,6 +19,10 @@ chrono.workspace = true
 bytes.workspace = true
 crossbeam.workspace = true
 parking_lot.workspace = true
+ethers.workspace = true
+
+# Internal
+matrix-types = { path = "../shared/types" }
 
 [dev-dependencies]
 mockall.workspace = true

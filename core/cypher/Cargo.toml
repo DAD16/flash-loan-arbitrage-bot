@@ -19,6 +19,9 @@ chrono.workspace = true
 dashmap.workspace = true
 parking_lot.workspace = true
 
+# Web3
+ethers.workspace = true
+
 # Metrics for risk monitoring
 prometheus.workspace = true
 

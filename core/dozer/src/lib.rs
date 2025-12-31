@@ -10,14 +10,10 @@
 //! - Calculate cross-DEX spreads
 //! - Feed data to analysis layer
 
-pub mod normalizer;
-pub mod chronicle;
-pub mod ai_research;
-
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
+use ethers::types::{Address, U256};
 use matrix_types::{ChainId, DexId, PriceUpdate};
 use thiserror::Error;
-use ethers_core::types::{Address, U256};
 use std::collections::HashMap;
 
 /// Dozer errors

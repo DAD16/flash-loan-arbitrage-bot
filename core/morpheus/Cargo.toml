@@ -26,6 +26,9 @@ tokio-tungstenite.workspace = true
 ethers.workspace = true
 ethers-providers.workspace = true
 
+# Internal
+matrix-types = { path = "../shared/types" }
+
 [dev-dependencies]
 mockall.workspace = true
 tokio-test = "0.4"

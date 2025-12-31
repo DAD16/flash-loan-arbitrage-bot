@@ -10,11 +10,7 @@
 //! - Trigger circuit breakers
 //! - Calculate risk metrics (VaR, etc.)
 
-pub mod limits;
-pub mod circuit_breaker;
-pub mod ai_research;
-
-use ethers_core::types::{Address, U256};
+use ethers::types::{Address, U256};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
