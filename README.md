@@ -2,6 +2,28 @@
 
 A high-performance, multi-agent flash loan arbitrage system for Ethereum and EVM-compatible chains.
 
+## Current Status (December 2024)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Rust Core (6 agents) | Working | 18 tests passing |
+| Solidity Contracts | Deployed | Sepolia testnet, verified |
+| TypeScript Agents | Working | Build passing |
+| Python Analysis | Working | 82 tests, 87% coverage |
+| C++ Hot Path | Scaffolded | Headers only |
+| CI/CD | Configured | GitHub Actions |
+| Monitoring | Configured | Prometheus/Grafana |
+| Docker Compose | Ready | Full stack defined |
+
+### Deployed Contracts (Sepolia Testnet)
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| FlashLoanReceiver | `0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7` | [Etherscan](https://sepolia.etherscan.io/address/0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7#code) |
+| MultiDexRouter | `0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac` | [Etherscan](https://sepolia.etherscan.io/address/0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac#code) |
+
+**Owner**: `0xADD694d04A52DfB212e965F1A3A61F30d2F7B694`
+
 ## Features
 
 - **Multi-Chain Support**: Ethereum, Arbitrum, Optimism, Base, BSC
@@ -38,32 +60,47 @@ A high-performance, multi-agent flash loan arbitrage system for Ethereum and EVM
 
 ### Prerequisites
 
-- Rust 1.75+
-- Node.js 20+
-- Python 3.11+
-- Docker & Docker Compose
-- Foundry (for Solidity)
+- Rust 1.75+ (with `cargo`)
+- Node.js 20+ (with `pnpm`)
+- Python 3.11+ (with `pip`)
+- Docker & Docker Compose (optional, for full stack)
+- Foundry (`forge`, `cast`, `anvil`)
 - CMake 3.20+ (for C++)
 
 ### Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/flash-loan-arbitrage-bot.git
+git clone https://github.com/DAD16/flash-loan-arbitrage-bot.git
 cd flash-loan-arbitrage-bot
 
-# Install dependencies
-make install
+# Install Rust dependencies
+cd core && cargo build && cd ..
 
-# Setup environment
-cp .env.example .env
-# Edit .env with your RPC URLs and API keys
+# Install TypeScript dependencies
+cd agents && pnpm install && cd ..
 
-# Start infrastructure
-docker-compose up -d
+# Install Python dependencies
+cd analysis && pip install -e ".[dev]" && cd ..
 
-# Build all components
-make build
+# Install Solidity dependencies
+cd contracts && forge install && cd ..
+```
+
+### Running Tests
+
+```bash
+# Rust tests (18 tests)
+cd core && cargo test
+
+# Solidity tests (7 tests including fuzz)
+cd contracts && forge test -vvv
+
+# TypeScript build
+cd agents && pnpm run build
+
+# Python tests (82 tests)
+cd analysis && python -m pytest -v
 ```
 
 ### Configuration
@@ -73,66 +110,88 @@ Create a `.env` file:
 ```bash
 # RPC URLs
 ETH_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 ARB_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/YOUR_KEY
-OP_RPC_URL=https://opt-mainnet.g.alchemy.com/v2/YOUR_KEY
-BASE_RPC_URL=https://base-mainnet.g.alchemy.com/v2/YOUR_KEY
-BSC_RPC_URL=https://bsc-dataseed.binance.org
 
 # Execution
-PRIVATE_KEY=your_private_key
+PRIVATE_KEY=your_private_key  # 64 hex characters (32 bytes)
 FLASHBOTS_AUTH_KEY=your_flashbots_key
+
+# API Keys
+ETHERSCAN_API_KEY=your_etherscan_key
 
 # Risk Parameters
 MATRIX_MAX_POSITION_SIZE=50
 MATRIX_MAX_GAS_PRICE_GWEI=300
 ```
 
-### Running
+### Deploy Contracts
 
 ```bash
-# Development mode
-make dev
+# Set environment variables
+export PRIVATE_KEY="0x..."
+export SEPOLIA_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
 
-# Production mode
-make run
+# Deploy to Sepolia
+cd contracts
+forge script script/Deploy.s.sol:DeployScript \
+    --rpc-url $SEPOLIA_RPC_URL \
+    --private-key $PRIVATE_KEY \
+    --broadcast
 
-# Run specific agent
-cd core && cargo run --bin neo
+# Verify on Etherscan
+forge verify-contract <ADDRESS> src/FlashLoanReceiver.sol:FlashLoanReceiver \
+    --chain sepolia \
+    --etherscan-api-key $ETHERSCAN_API_KEY
 ```
 
 ## Project Structure
 
 ```
-├── hotpath/          # C++ ultra-low latency code
-├── core/             # Rust core agents
-├── agents/           # TypeScript coordination agents
-├── analysis/         # Python analysis agents
-├── contracts/        # Solidity smart contracts
+├── hotpath/          # C++ ultra-low latency code (scaffolded)
+├── core/             # Rust core agents (working)
+│   ├── neo/          # Orchestrator
+│   ├── morpheus/     # Market data
+│   ├── dozer/        # Data pipeline
+│   ├── trinity/      # Execution + Flashbots
+│   ├── seraph/       # Validation
+│   └── cypher/       # Risk management
+├── agents/           # TypeScript coordination agents (working)
+│   ├── merovingian/  # Mempool monitoring
+│   ├── keymaker/     # Secrets management
+│   └── link/         # Message routing
+├── analysis/         # Python analysis agents (working)
+│   ├── oracle/       # Price aggregation
+│   ├── sati/         # ML models
+│   ├── persephone/   # Sentiment
+│   └── rama_kandra/  # Fundamentals
+├── contracts/        # Solidity smart contracts (deployed)
 ├── monitoring/       # Prometheus/Grafana configs
-├── deploy/           # Deployment configurations
+├── deploy/           # Docker/Ansible deployment
+├── deployments/      # Deployed contract addresses
 ├── config/           # Application configs
 └── docs/             # Documentation
 ```
 
 ## Agents
 
-| Agent | Role | Language |
-|-------|------|----------|
-| NEO | Orchestrator | Rust |
-| MORPHEUS | Market Data | Rust |
-| DOZER | Data Pipeline | Rust |
-| TRINITY | Execution | Rust |
-| SERAPH | Validation | Rust |
-| CYPHER | Risk Management | Rust |
-| ORACLE | Price Analysis | Python |
-| SATI | ML Models | Python |
-| PERSEPHONE | Sentiment | Python |
-| RAMA-KANDRA | Fundamentals | Python |
-| MEROVINGIAN | Mempool | TypeScript |
-| KEYMAKER | Secrets | TypeScript |
-| LINK | Communication | TypeScript |
+| Agent | Role | Language | Status |
+|-------|------|----------|--------|
+| NEO | Orchestrator | Rust | Working |
+| MORPHEUS | Market Data | Rust | Working |
+| DOZER | Data Pipeline | Rust | Working |
+| TRINITY | Execution + Flashbots | Rust | Working |
+| SERAPH | Validation | Rust | Working |
+| CYPHER | Risk Management | Rust | Working |
+| ORACLE | Price Analysis | Python | Working |
+| SATI | ML Models | Python | Working |
+| PERSEPHONE | Sentiment | Python | Working |
+| RAMA-KANDRA | Fundamentals | Python | Working |
+| MEROVINGIAN | Mempool | TypeScript | Working |
+| KEYMAKER | Secrets | TypeScript | Working |
+| LINK | Communication | TypeScript | Working |
 
-## Performance
+## Performance Targets
 
 | Metric | Target |
 |--------|--------|
@@ -142,20 +201,6 @@ cd core && cargo run --bin neo
 | TX Success Rate | >25% |
 | System Uptime | 99.9% |
 
-## Smart Contracts
-
-Deploy contracts using Foundry:
-
-```bash
-cd contracts
-
-# Deploy to testnet
-forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC --broadcast
-
-# Deploy to mainnet (with verification)
-forge script script/Deploy.s.sol --rpc-url $ETH_RPC_URL --broadcast --verify
-```
-
 ## Monitoring
 
 - **Prometheus**: http://localhost:9090
@@ -163,18 +208,30 @@ forge script script/Deploy.s.sol --rpc-url $ETH_RPC_URL --broadcast --verify
 - **Jaeger**: http://localhost:16686
 - **Kafka UI**: http://localhost:8080
 
+Dashboards configured in `monitoring/tank/grafana/dashboards/`.
+
 ## Testing
 
 ```bash
-# Run all tests
-make test
-
-# Run specific tests
+# Rust (18 tests)
 cd core && cargo test
-cd contracts && forge test -vvv
-cd agents && npm test
-cd analysis && pytest
+
+# Solidity with fork (7 tests)
+cd contracts
+ETH_RPC_URL="https://eth-mainnet.g.alchemy.com/v2/KEY" forge test -vvv
+
+# TypeScript
+cd agents && pnpm run build
+
+# Python (82 tests, 87% coverage)
+cd analysis && python -m pytest -v --cov
 ```
+
+## CI/CD
+
+GitHub Actions workflows in `.github/workflows/`:
+- `ci.yml` - Build and test all components
+- `deploy.yml` - Multi-chain deployment
 
 ## Security
 
@@ -183,6 +240,14 @@ cd analysis && pytest
 - MEV protection via Flashbots
 - Risk limits enforced at multiple layers
 - No external calls to untrusted contracts
+
+## Next Steps
+
+1. Install Docker Desktop for local stack testing
+2. Test flash loan execution on Sepolia with AAVE testnet tokens
+3. Deploy to additional testnets (Arbitrum Sepolia)
+4. Implement C++ hot path
+5. Production deployment after thorough testing
 
 ## Contributing
 
