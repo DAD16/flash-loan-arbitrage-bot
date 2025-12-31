@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {Script, console2} from "forge-std/Script.sol";
 import {FlashLoanReceiver} from "../src/FlashLoanReceiver.sol";
 import {MultiDexRouter} from "../src/MultiDexRouter.sol";
+import {IMultiDexRouter} from "../src/interfaces/IMultiDexRouter.sol";
 
 /**
  * @title DeployScript
@@ -68,7 +69,7 @@ contract DeployScript is Script {
 
         // Configure DEX routers based on chain
         if (block.chainid == 1) {
-            router.setDexRouter(MultiDexRouter.DexId.SushiSwap, SUSHISWAP_ROUTER);
+            router.setDexRouter(IMultiDexRouter.DexId.SushiSwap, SUSHISWAP_ROUTER);
         }
     }
 }
