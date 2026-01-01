@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL RULE
+
+After completing ANY task, update `memory.md` with:
+- What was just completed
+- Current status
+- Next steps
+
+**Do this BEFORE responding to the user.**
+
+## Context Management
+
+Every 10-15 messages, remind the user to run `/compact`.
+If context is getting long, proactively suggest compacting.
+
 ## Current Project Status (December 2024)
 
 ### What's Working

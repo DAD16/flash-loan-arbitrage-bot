@@ -299,7 +299,7 @@ export interface DashboardState {
   totalProfitWei: bigint;
   profit24hWei: bigint;
   successRate: number;
-  activeExecutions: number;
+  activeExecutionCount: number;
   ourRank: number;
 
   // Agent health

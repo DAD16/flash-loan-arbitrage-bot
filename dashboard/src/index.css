@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Matrix Dark Theme */
+:root {
+  --matrix-primary: #00ff41;
+  --matrix-secondary: #008f11;
+  --matrix-success: #00ff41;
+  --matrix-danger: #ff4444;
+  --matrix-warning: #ffbb00;
+  --matrix-bg: #0d0d0d;
+  --matrix-surface: #1a1a1a;
+  --matrix-surface-hover: #252525;
+  --matrix-border: #333333;
+  --matrix-text: #e0e0e0;
+  --matrix-text-muted: #888888;
+}
+
+body {
+  @apply bg-matrix-bg text-matrix-text;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-matrix-surface;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-matrix-border rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-matrix-text-muted;
+}
+
+/* Monospace for data */
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Matrix glow effect */
+.matrix-glow {
+  text-shadow: 0 0 10px var(--matrix-primary), 0 0 20px var(--matrix-primary);
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-200;
+}
+
+.card-hover:hover {
+  @apply bg-matrix-surface-hover border-matrix-primary/30;
+}
+
+/* Status indicators */
+.status-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.status-dot.success {
+  @apply bg-matrix-success;
+  box-shadow: 0 0 6px var(--matrix-success);
+}
+
+.status-dot.warning {
+  @apply bg-matrix-warning;
+  box-shadow: 0 0 6px var(--matrix-warning);
+}
+
+.status-dot.danger {
+  @apply bg-matrix-danger;
+  box-shadow: 0 0 6px var(--matrix-danger);
+}
+
+/* Profit/Loss colors */
+.profit {
+  @apply text-matrix-success;
+}
+
+.loss {
+  @apply text-matrix-danger;
+}
+
+/* Table styles */
+.data-table {
+  @apply w-full text-sm;
+}
+
+.data-table th {
+  @apply text-left text-matrix-text-muted font-medium py-2 px-3 border-b border-matrix-border;
+}
+
+.data-table td {
+  @apply py-2 px-3 border-b border-matrix-border/50;
+}
+
+.data-table tr:hover {
+  @apply bg-matrix-surface-hover;
+}
+
+/* Button variants */
+.btn {
+  @apply px-4 py-2 rounded font-medium transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-matrix-primary text-black hover:bg-matrix-primary/80;
+}
+
+.btn-secondary {
+  @apply bg-matrix-surface border border-matrix-border text-matrix-text hover:bg-matrix-surface-hover;
+}
+
+.btn-danger {
+  @apply bg-matrix-danger/20 border border-matrix-danger text-matrix-danger hover:bg-matrix-danger/30;
+}
+
+/* Input styles */
+input, select, textarea {
+  @apply bg-matrix-surface border border-matrix-border rounded px-3 py-2 text-matrix-text;
+  @apply focus:outline-none focus:border-matrix-primary focus:ring-1 focus:ring-matrix-primary/50;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-matrix-success/20 text-matrix-success;
+}
+
+.badge-warning {
+  @apply bg-matrix-warning/20 text-matrix-warning;
+}
+
+.badge-danger {
+  @apply bg-matrix-danger/20 text-matrix-danger;
+}
+
+.badge-info {
+  @apply bg-blue-500/20 text-blue-400;
+}
+
+/* Confidence badges */
+.confidence-low {
+  @apply bg-gray-500/20 text-gray-400;
+}
+
+.confidence-medium {
+  @apply bg-yellow-500/20 text-yellow-400;
+}
+
+.confidence-high {
+  @apply bg-matrix-success/20 text-matrix-success;
+}
+
+.confidence-very_high {
+  @apply bg-matrix-primary/30 text-matrix-primary font-semibold;
+}
+
+/* Toast animations */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
