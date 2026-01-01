@@ -1,0 +1,62 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-01T00:00:00Z",
+  "last_updated_by": "root",
+
+  "instances": {
+    "root": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": "2026-01-01T00:00:00Z"
+    },
+    "core": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": null
+    },
+    "agents": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": null
+    },
+    "analysis": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": null
+    },
+    "contracts": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": null
+    },
+    "dashboard": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": null
+    },
+    "hotpath": {
+      "status": "idle",
+      "current_task": null,
+      "last_active": null
+    }
+  },
+
+  "locked_files": {},
+
+  "shared_decisions": [
+    {
+      "date": "2026-01-01",
+      "decision": "Multi-instance setup created",
+      "made_by": "root",
+      "affects": ["all"]
+    }
+  ],
+
+  "pending_cross_scope_requests": [],
+
+  "notes": {
+    "locking_protocol": "Before modifying a shared file, add it to locked_files with your instance name. Remove when done.",
+    "status_values": ["idle", "working", "blocked", "waiting_for_input"],
+    "coordination": "Root instance consolidates STATUS.md files into memory.md periodically"
+  }
+}

@@ -1,6 +1,82 @@
-# CLAUDE.md
+# CLAUDE.md - Root Orchestrator
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Multi-Instance Mode
+
+This project supports running multiple Claude Code instances in parallel. Each component has its own CLAUDE.md:
+
+| Directory | Scope | CLAUDE.md |
+|-----------|-------|-----------|
+| `core/` | Rust agents | `core/CLAUDE.md` |
+| `agents/` | TypeScript agents | `agents/CLAUDE.md` |
+| `analysis/` | Python agents | `analysis/CLAUDE.md` |
+| `contracts/` | Solidity contracts | `contracts/CLAUDE.md` |
+| `dashboard/` | Dashboard UI | `dashboard/CLAUDE.md` |
+| `hotpath/` | C++ hot path | `hotpath/CLAUDE.md` |
+
+### Running Parallel Instances
+
+```powershell
+# Terminal 1 - Root orchestrator
+cd "C:\Claude Projects\Flash Loan Arbitrage Bot"
+
+# Terminal 2 - Rust agents
+cd "C:\Claude Projects\Flash Loan Arbitrage Bot\core"
+
+# Terminal 3 - TypeScript agents
+cd "C:\Claude Projects\Flash Loan Arbitrage Bot\agents"
+
+# Terminal 4 - Python agents
+cd "C:\Claude Projects\Flash Loan Arbitrage Bot\analysis"
+
+# Terminal 5 - Dashboard
+cd "C:\Claude Projects\Flash Loan Arbitrage Bot\dashboard"
+```
+
+### Root Instance Responsibilities
+
+This (root) instance is the ONLY one that can modify:
+- `memory.md` - Session notes and status
+- `CLAUDE.md` - This file
+- `.env` - Environment configuration
+- `Makefile` - Build orchestration
+- `docker-compose.yml` - Infrastructure
+- `README.md` - Project documentation
+- `.github/` - CI/CD workflows
+
+### Cross-Scope Coordination
+
+When sub-instances need cross-scope changes:
+1. Sub-instance adds request to their `STATUS.md` under "Cross-Scope Requests"
+2. User relays to root or appropriate instance
+3. Root instance coordinates shared resource updates
+
+### Global State Management
+
+**state.json** - Central coordination file:
+- `instances` - Status of each running instance
+- `locked_files` - Currently locked files (to prevent conflicts)
+- `shared_decisions` - Major decisions affecting multiple scopes
+- `pending_cross_scope_requests` - Requests waiting for action
+
+**Root instance responsibilities:**
+1. Periodically check all `*/STATUS.md` files
+2. Consolidate updates into `memory.md`
+3. Process `pending_cross_scope_requests` in state.json
+4. Arbitrate file locking conflicts
+
+### STATUS.md Files
+
+Each scope has its own status file:
+```
+core/STATUS.md       ← Rust instance logs here
+agents/STATUS.md     ← TypeScript instance logs here
+analysis/STATUS.md   ← Python instance logs here
+contracts/STATUS.md  ← Solidity instance logs here
+dashboard/STATUS.md  ← Dashboard instance logs here
+hotpath/STATUS.md    ← C++ instance logs here
+```
 
 ## CRITICAL RULE
 

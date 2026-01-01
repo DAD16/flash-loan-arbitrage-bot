@@ -1,9 +1,37 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 (Session End)
+2026-01-01 (Multi-Instance Setup)
 
 ## What Was Just Completed
+- Created full multi-instance parallel development setup:
+
+### CLAUDE.md Files (Scope Definition)
+  - `core/CLAUDE.md` - Rust agents scope
+  - `agents/CLAUDE.md` - TypeScript agents scope
+  - `analysis/CLAUDE.md` - Python agents scope
+  - `contracts/CLAUDE.md` - Solidity contracts scope
+  - `dashboard/CLAUDE.md` - Dashboard UI scope
+  - `hotpath/CLAUDE.md` - C++ hot path scope
+
+### STATUS.md Files (Per-Instance Logging)
+  - `core/STATUS.md` - Rust session log
+  - `agents/STATUS.md` - TypeScript session log
+  - `analysis/STATUS.md` - Python session log
+  - `contracts/STATUS.md` - Solidity session log
+  - `dashboard/STATUS.md` - Dashboard session log
+  - `hotpath/STATUS.md` - C++ session log
+
+### state.json (Global Coordination)
+  - Instance status tracking
+  - File locking protocol
+  - Cross-scope request queue
+  - Shared decisions log
+
+- Updated root `CLAUDE.md` with orchestrator role and coordination responsibilities
+- Each CLAUDE.md defines: scope, off-limits files, status tracking, locking protocol
+
+## Previous Session Completed
 - Deployed FlashLoanReceiver and MultiDexRouter to BSC mainnet
 - Authorized executor wallet on BSC contracts
 - Created BSC deployment configuration
