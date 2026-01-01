@@ -1,13 +1,21 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 10:40
+2026-01-01 (Session End)
 
 ## What Was Just Completed
 - Deployed FlashLoanReceiver and MultiDexRouter to BSC mainnet
 - Authorized executor wallet on BSC contracts
 - Created BSC deployment configuration
-- System ready for real flash loan arbitrage on BSC
+- Whitelisted DEX routers (PancakeSwap, MDEX) on FlashLoanReceiver
+- Tested flash loan infrastructure - VERIFIED WORKING
+- Discovered: Reserve-based spreads ≠ executable profits (fees eat margins)
+- Created execute-arbitrage.ts and test-flash-loan.ts scripts
+
+## Resume Point
+The flash loan arbitrage system is fully deployed and verified on BSC mainnet.
+Infrastructure works, waiting for profitable opportunities (>1% spread after fees).
+To continue: Run price monitoring and look for real arbitrage opportunities.
 
 ## Current Status
 
@@ -127,6 +135,23 @@ curl -X POST http://localhost:9081/api/prices/start \
 2. Private key stored in .env (gitignored)
 3. Current wallet suitable for testnet only
 
+## Flash Loan Test Results (BSC Mainnet)
+```
+Aave V3 USDT Reserve: Available (ID: 5)
+aToken: 0xa9251ca9DE909CB71783723713B21E4233fbf1B1
+Contract minProfitBps: Set to 0 for testing
+Round-trip swap (USDT→WBNB→USDT): -0.059 USDT (expected loss from fees)
+Status: Infrastructure verified working
+```
+
+## Key Discovery
+Reserve-based price spreads (shown in monitoring) ≠ executable profits:
+- Price monitoring shows 4%+ spreads from pool reserve ratios
+- Actual router swaps include 0.25% fee per hop + price impact
+- Flash loan fee: 0.09% (Aave V3)
+- Net result: Most "opportunities" are unprofitable after fees
+- MEV bots on BSC are extremely competitive
+
 ## Next Steps
 1. ~~Configure wallet private key~~ ✓ DONE
 2. ~~Redeploy contracts on Sepolia~~ ✓ DONE
@@ -134,6 +159,8 @@ curl -X POST http://localhost:9081/api/prices/start \
 4. ~~Test real execution on Sepolia~~ ✓ DONE
 5. ~~Add price monitoring for real arbitrage opportunities~~ ✓ DONE
 6. ~~Deploy contracts to BSC for real arbitrage~~ ✓ DONE
-7. Execute real flash loan arbitrage when profitable
-8. Configure additional chains (ARB, OP, Base)
-9. Add automated execution when opportunities detected
+7. ~~Verify flash loan infrastructure works~~ ✓ DONE
+8. Execute real flash loan arbitrage when profitable opportunity arises
+9. Improve opportunity detection (use router quotes, not reserves)
+10. Configure additional chains (ARB, OP, Base)
+11. Add automated execution when opportunities detected

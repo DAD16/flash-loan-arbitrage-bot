@@ -70,3 +70,8 @@ data/
 # ============ Monitoring ============
 /monitoring/tank/grafana/data/
 /monitoring/tank/prometheus/data/
+node_modules/
+dist/
+*.db
+*.db-shm
+*.db-wal
