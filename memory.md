@@ -152,6 +152,150 @@ Reserve-based price spreads (shown in monitoring) ≠ executable profits:
 - Net result: Most "opportunities" are unprofitable after fees
 - MEV bots on BSC are extremely competitive
 
+## PENDING PROJECTS (Next Session)
+
+### PROJECT 1: Multi-Wallet Management System
+**Priority**: High
+**Assigned Agent**: KEYMAKER (Secrets & Authentication)
+
+**Requirements**:
+1. Generate new wallets programmatically (HD wallet derivation from master seed)
+2. Fund wallets with gas fees (BNB for BSC, ETH for other chains)
+3. Track wallet-to-contract assignments in database
+4. Dashboard view showing:
+   - All managed wallets with balances
+   - Which contract each wallet is authorized on
+   - Gas balance warnings (low balance alerts)
+   - Funding history
+
+**Proposed Scheme**:
+```
+Wallet Hierarchy:
+├── Master Wallet (Cold Storage - Manual)
+│   └── Funds distribution wallet
+│
+├── Executor Wallets (Hot - Per Contract)
+│   ├── BSC-Executor-1 → FlashLoanReceiver (BSC)
+│   ├── BSC-Executor-2 → FlashLoanReceiver (BSC) [backup]
+│   ├── ETH-Executor-1 → FlashLoanReceiver (ETH)
+│   ├── ARB-Executor-1 → FlashLoanReceiver (Arbitrum)
+│   └── ...
+│
+└── Gas Reserve Wallets (Per Chain)
+    ├── BSC-Gas-Reserve (holds BNB for refueling)
+    ├── ETH-Gas-Reserve (holds ETH for refueling)
+    └── ...
+```
+
+**Database Schema** (proposed):
+```sql
+CREATE TABLE wallets (
+  id TEXT PRIMARY KEY,
+  address TEXT NOT NULL,
+  chain TEXT NOT NULL,
+  role TEXT NOT NULL, -- 'executor' | 'gas_reserve' | 'master'
+  derivation_path TEXT,
+  created_at TIMESTAMP,
+  last_funded_at TIMESTAMP
+);
+
+CREATE TABLE wallet_assignments (
+  wallet_id TEXT REFERENCES wallets(id),
+  contract_address TEXT NOT NULL,
+  chain TEXT NOT NULL,
+  authorized_at TIMESTAMP,
+  tx_hash TEXT
+);
+
+CREATE TABLE wallet_balances (
+  wallet_id TEXT REFERENCES wallets(id),
+  balance_wei TEXT NOT NULL,
+  updated_at TIMESTAMP
+);
+```
+
+**Tasks**:
+- [ ] Create wallet generation utility (ethers.js HDNode)
+- [ ] Add wallet tracking to SQLite database
+- [ ] Create dashboard page for wallet management
+- [ ] Add auto-funding logic when balance < threshold
+- [ ] Add authorization flow for new wallets on contracts
+
+---
+
+### PROJECT 2: Speed Optimization - Fast Execution Mode
+**Priority**: Critical
+**Assigned Agents**:
+- ORACLE (Price Detection) - Python analysis
+- MORPHEUS (Market Data) - Rust WebSocket feeds
+- TRINITY (Execution) - Rust execution engine
+- Hot Path (C++) - Ultra-low latency calculations
+
+**Current Bottlenecks Analysis**:
+```
+Current Flow (Estimated Latency):
+1. Price fetch from DEX APIs     ~500-2000ms (HTTP polling)
+2. Spread calculation            ~10ms (JavaScript)
+3. Profit validation             ~100ms (RPC calls for quotes)
+4. Transaction building          ~50ms
+5. Transaction submission        ~200ms
+6. Confirmation waiting          ~3000ms (1 BSC block)
+─────────────────────────────────────────────────
+Total: ~4-6 seconds (TOO SLOW for MEV competition)
+
+Target Flow (With Optimization):
+1. WebSocket price streams       ~10ms (real-time push)
+2. SIMD spread calculation       ~0.1ms (C++ hot path)
+3. Pre-computed profit tables    ~1ms (cached thresholds)
+4. Pre-signed TX templates       ~5ms (just update params)
+5. Direct node submission        ~50ms (dedicated RPC)
+6. Flashbots/MEV relay           ~100ms (private mempool)
+─────────────────────────────────────────────────
+Target: <200ms end-to-end
+```
+
+**Optimization Tasks**:
+
+**Phase A - Quick Wins (TypeScript/Dashboard)**:
+- [ ] Switch from HTTP polling to WebSocket price feeds
+- [ ] Use router `getAmountsOut` quotes instead of reserve calculations
+- [ ] Pre-compute gas estimates and cache them
+- [ ] Add "Fast Mode" toggle to dashboard
+- [ ] Batch multiple DEX quotes in parallel
+
+**Phase B - Rust Core Implementation**:
+- [ ] Implement MORPHEUS WebSocket feed manager
+- [ ] Build ORACLE price aggregation with sub-ms latency
+- [ ] Create TRINITY fast execution path with pre-signed TXs
+- [ ] Add SERAPH instant simulation (revm fork)
+
+**Phase C - C++ Hot Path (Maximum Speed)**:
+- [ ] Lock-free order book for all DEX prices
+- [ ] SIMD-optimized arbitrage graph traversal
+- [ ] Pre-allocated memory pools (zero allocation)
+- [ ] Direct socket I/O with io_uring
+
+**Fast Mode Switch Design**:
+```typescript
+interface FastModeConfig {
+  enabled: boolean;
+  autoExecute: boolean;           // Execute without confirmation
+  minProfitThresholdBps: number;  // e.g., 50 = 0.5%
+  maxGasGwei: number;             // Gas price ceiling
+  maxSlippageBps: number;         // Slippage tolerance
+  usePrivateMempool: boolean;     // MEV protection
+  cooldownMs: number;             // Min time between executions
+}
+```
+
+**Dashboard Controls**:
+- Fast Mode ON/OFF toggle (prominent, red when active)
+- Real-time latency metrics display
+- Execution log with timestamps
+- Kill switch for emergency stop
+
+---
+
 ## Next Steps
 1. ~~Configure wallet private key~~ ✓ DONE
 2. ~~Redeploy contracts on Sepolia~~ ✓ DONE
@@ -160,7 +304,8 @@ Reserve-based price spreads (shown in monitoring) ≠ executable profits:
 5. ~~Add price monitoring for real arbitrage opportunities~~ ✓ DONE
 6. ~~Deploy contracts to BSC for real arbitrage~~ ✓ DONE
 7. ~~Verify flash loan infrastructure works~~ ✓ DONE
-8. Execute real flash loan arbitrage when profitable opportunity arises
-9. Improve opportunity detection (use router quotes, not reserves)
-10. Configure additional chains (ARB, OP, Base)
-11. Add automated execution when opportunities detected
+8. **[PROJECT 1]** Implement multi-wallet management (KEYMAKER)
+9. **[PROJECT 2]** Speed optimization and fast mode (ORACLE/MORPHEUS/TRINITY)
+10. Execute real flash loan arbitrage when profitable opportunity arises
+11. Configure additional chains (ARB, OP, Base)
+12. Add automated execution when opportunities detected
