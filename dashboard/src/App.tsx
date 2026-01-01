@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Toast from './components/ui/Toast';
 import Overview from './pages/Overview';
+import Prices from './pages/Prices';
 import Competitors from './pages/Competitors';
 import Opportunities from './pages/Opportunities';
 import Strategy from './pages/Strategy';
@@ -15,6 +16,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/overview" replace />} />
           <Route path="/overview" element={<Overview />} />
+          <Route path="/prices" element={<Prices />} />
           <Route path="/competitors" element={<Competitors />} />
           <Route path="/opportunities" element={<Opportunities />} />
           <Route path="/strategy" element={<Strategy />} />

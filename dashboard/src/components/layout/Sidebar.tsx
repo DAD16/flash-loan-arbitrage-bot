@@ -8,12 +8,14 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
+  TrendingUp,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import clsx from 'clsx';
 
 const navItems = [
   { path: '/overview', icon: LayoutDashboard, label: 'Overview' },
+  { path: '/prices', icon: TrendingUp, label: 'Live Prices' },
   { path: '/competitors', icon: Users, label: 'Competitors' },
   { path: '/opportunities', icon: Zap, label: 'Opportunities' },
   { path: '/strategy', icon: Settings, label: 'Strategy' },
