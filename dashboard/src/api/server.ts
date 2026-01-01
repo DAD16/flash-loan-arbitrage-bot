@@ -17,6 +17,7 @@ import performanceRouter from './routes/performance.js';
 import strategyRouter from './routes/strategy.js';
 import ingestionRouter from './routes/ingestion.js';
 import statusRouter from './routes/status.js';
+import executeRouter from './routes/execute.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/performance', performanceRouter);
 app.use('/api/strategy', strategyRouter);
 app.use('/api/ingestion', ingestionRouter);
 app.use('/api/status', statusRouter);
+app.use('/api/execute', executeRouter);
 
 // Overview endpoint - aggregates key metrics
 app.get('/api/overview', async (req: Request, res: Response) => {
