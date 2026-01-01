@@ -10,6 +10,11 @@
 //! - Calculate cross-DEX spreads
 //! - Feed data to analysis layer
 
+// Feed processor integration
+pub mod feed_processor;
+
+pub use feed_processor::{FeedProcessor, FeedProcessorBuilder, ProcessorConfig, ProcessorStats};
+
 use crossbeam::channel::{Receiver, Sender};
 use ethers::types::{Address, U256};
 use matrix_types::{ChainId, DexId, PriceUpdate};

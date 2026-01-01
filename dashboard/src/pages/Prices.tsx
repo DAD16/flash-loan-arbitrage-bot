@@ -13,6 +13,7 @@ import {
 import clsx from 'clsx';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import FastModeControl from '../components/FastModeControl';
 import { useStore } from '../store/useStore';
 
 interface PriceStatus {
@@ -268,6 +269,9 @@ export default function Prices() {
           )}
         </div>
       </div>
+
+      {/* Fast Mode Control */}
+      <FastModeControl />
 
       {/* Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

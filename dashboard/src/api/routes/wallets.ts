@@ -413,7 +413,12 @@ router.post('/generate', async (req: Request, res: Response) => {
       });
     }
 
-    const masterNode = ethers.HDNodeWallet.fromPhrase(seedPhrase);
+    // In ethers v6, use fromSeed to get the true master node at depth 0
+    const mnemonic = ethers.Mnemonic.fromPhrase(seedPhrase);
+    const seed = mnemonic.computeSeed();
+    const masterNode = ethers.HDNodeWallet.fromSeed(seed);
+
+    // Now derive the child wallet using full BIP-44 path from master (depth 0)
     const derivationPath = `m/44'/60'/0'/0/${walletIndex}`;
     const childNode = masterNode.derivePath(derivationPath);
 

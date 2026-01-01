@@ -52,6 +52,24 @@ When sub-instances need cross-scope changes:
 2. User relays to root or appropriate instance
 3. Root instance coordinates shared resource updates
 
+### File Locking (Crash Prevention)
+
+**IMPORTANT**: When modifying shared files (`memory.md`, `state.json`), use the file locking utility to prevent crashes:
+
+```typescript
+import { acquireLock, releaseLock, atomicWrite } from './orchestration/fileLock';
+
+const lock = await acquireLock('memory.md', 'my-instance');
+try {
+  atomicWrite('memory.md', newContent);
+} finally {
+  await releaseLock(lock);
+}
+```
+
+**Test**: `npx tsx testing/test-file-lock.ts`
+**Crash Test**: `powershell testing/multi-instance-crash-test.ps1 -All`
+
 ### Global State Management
 
 **state.json** - Central coordination file:

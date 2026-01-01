@@ -21,10 +21,14 @@ dashmap.workspace = true
 
 # WebSocket connections
 tokio-tungstenite.workspace = true
+futures-util = "0.3"
 
 # Web3
 ethers.workspace = true
 ethers-providers.workspace = true
+
+# Utilities
+lazy_static = "1.4"
 
 # Internal
 matrix-types = { path = "../shared/types" }

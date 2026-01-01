@@ -3,10 +3,17 @@
  * Express.js backend for the dashboard
  */
 
+// Load environment variables from .env file
+import dotenv from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirnameServer = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: resolve(__dirnameServer, '..', '..', '..', '.env') });
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 
 // Import routes
 import competitorsRouter from './routes/competitors.js';
@@ -20,8 +27,12 @@ import statusRouter from './routes/status.js';
 import executeRouter from './routes/execute.js';
 import pricesRouter from './routes/prices.js';
 import walletsRouter from './routes/wallets.js';
+import fastModeRouter from './routes/fastMode.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+// Import WebSocket server
+import { startWebSocketServer, getWebSocketServer } from '../services/websocketServer.js';
+
+const __dirname = __dirnameServer;
 const app = express();
 const PORT = process.env.PORT || 9081;
 
@@ -60,6 +71,7 @@ app.use('/api/status', statusRouter);
 app.use('/api/execute', executeRouter);
 app.use('/api/prices', pricesRouter);
 app.use('/api/wallets', walletsRouter);
+app.use('/api/fast-mode', fastModeRouter);
 
 // Overview endpoint - aggregates key metrics
 app.get('/api/overview', async (req: Request, res: Response) => {
@@ -190,9 +202,20 @@ app.listen(PORT, () => {
   ║    *    /api/ingestion       - Data ingestion control     ║
   ║    *    /api/prices          - Live price monitoring      ║
   ║    *    /api/wallets         - Wallet management          ║
+  ║    *    /api/fast-mode       - Fast Mode control          ║
   ║    GET  /api/status          - System & RPC status        ║
   ╚═══════════════════════════════════════════════════════════╝
   `);
+
+  // Start WebSocket server for real-time streaming
+  try {
+    const wsServer = startWebSocketServer(9082);
+    console.log(`  ⚡ WebSocket Server: ws://localhost:9082`);
+    console.log(`     Fast Mode: ${wsServer.getFastModeConfig().enabled ? 'ENABLED' : 'disabled'}`);
+    console.log('');
+  } catch (error) {
+    console.error('  ⚠️  WebSocket Server failed to start:', (error as Error).message);
+  }
 });
 
 export default app;

@@ -14,6 +14,16 @@ use matrix_types::{ChainId, DexId, PriceUpdate};
 use thiserror::Error;
 use tokio::sync::mpsc;
 
+// WebSocket feed implementations
+pub mod feeds;
+
+// Re-export commonly used types
+pub use feeds::{
+    ConnectionPool, ConnectionConfig,
+    DexWebSocketFeed, PoolSubscription,
+    BscPriceFeed, PancakeSwapFeed, BiswapFeed,
+};
+
 /// Morpheus errors
 #[derive(Error, Debug)]
 pub enum MorpheusError {

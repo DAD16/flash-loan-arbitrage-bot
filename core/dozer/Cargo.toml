@@ -23,6 +23,7 @@ ethers.workspace = true
 
 # Internal
 matrix-types = { path = "../shared/types" }
+morpheus = { path = "../morpheus" }
 
 [dev-dependencies]
 mockall.workspace = true

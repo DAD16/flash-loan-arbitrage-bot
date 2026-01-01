@@ -1,7 +1,123 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 (Wallet Dashboard UI)
+2026-01-01 (Multi-Instance Crash Investigation)
+
+## CRASH INVESTIGATION (2026-01-01)
+
+### What Happened
+- Root instance was working on wallet management system
+- User opened second PowerShell instance with MOUSE agent doing research
+- Both instances crashed simultaneously
+
+### Wallet Status Before Crash
+The wallet system appears COMPLETE:
+- `agents/keymaker/src/walletManager.ts` - HD derivation, balance monitoring, auto-funding ✓
+- `agents/keymaker/src/database.ts` - SQLite with WAL mode for concurrent access ✓
+- `dashboard/src/pages/Wallets.tsx` - Full dashboard UI ✓
+- No obvious code issues found
+
+### CONFIRMED CRASH CAUSES (Test Results)
+
+| Issue | Test Result | Impact |
+|-------|-------------|--------|
+| **File Contention** | 17/50 writes failed (34%) | HIGH - causes data loss |
+| **state.json Race** | 5 errors across 3 instances | HIGH - corrupts coordination |
+| **Claude Processes** | 8 active processes | MEDIUM - resource contention |
+
+**Root Cause**: When multiple Claude instances run, they compete for shared files (`memory.md`, `state.json`). Without file locking, concurrent writes fail silently or corrupt data, causing crashes.
+
+### Crash Prevention (Implemented)
+Created test: `testing/multi-instance-crash-test.ps1 -All`
+
+**File Locking Solution Implemented:**
+- `orchestration/fileLock.ts` - File locking utility
+- `testing/test-file-lock.ts` - Tests (5/5 passing)
+
+**Features:**
+- `acquireLock(file, instance)` - Acquire exclusive lock
+- `releaseLock(handle)` - Release lock
+- `atomicWrite(file, content)` - Write via temp file + rename
+- `modifyFileWithLock(file, modifier, instance)` - Read-modify-write with lock
+- `updateStateJson(updater, instance)` - Safe state.json updates
+- `cleanupStaleLocks()` - Remove locks older than 30s
+
+**Usage Example:**
+```typescript
+import { acquireLock, releaseLock, atomicWrite } from './orchestration/fileLock';
+
+const lock = await acquireLock('memory.md', 'root');
+try {
+  atomicWrite('memory.md', newContent);
+} finally {
+  await releaseLock(lock);
+}
+```
+
+### Wallet Bug Fixed (2026-01-01)
+**Issue**: `HDNodeWallet.fromPhrase()` in ethers v6 returns wallet at default path (depth 5), not master node.
+**Fix**: Use `mnemonic.computeSeed()` + `HDNodeWallet.fromSeed(seed)` to get true master node at depth 0.
+**File**: `dashboard/src/api/routes/wallets.ts` line 416-419
+
+### Wallet System Verified Working
+- Wallet generation: ✓ (2 test wallets created)
+- Balance monitoring: ✓ (fetches on-chain balances)
+- Summary API: ✓ (counts by chain/role, low balance detection)
+- Dashboard UI: Running at http://localhost:9080
+
+## Speed Optimization - Phase A Complete (2026-01-01)
+
+### Implemented Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| WebSocket Server | `services/websocketServer.ts` | Real-time price streaming on `ws://localhost:9082` |
+| Fast Mode API | `api/routes/fastMode.ts` | Enable/disable/configure fast execution |
+| WebSocket Hook | `hooks/useWebSocket.ts` | React hooks for live updates |
+| Fast Mode UI | `components/FastModeControl.tsx` | Dashboard control panel with latency metrics |
+
+### API Endpoints
+
+```
+GET  /api/fast-mode/status   - Get config and stats
+POST /api/fast-mode/enable   - Enable Fast Mode
+POST /api/fast-mode/disable  - Emergency stop
+POST /api/fast-mode/config   - Update settings
+GET  /api/fast-mode/latency  - Get latency metrics
+```
+
+### WebSocket Channels
+
+- `prices` - Real-time price updates
+- `opportunities` - Arbitrage opportunities
+- `executions` - Trade execution status
+- `latency` - RPC/processing latency metrics
+
+### Fast Mode Config
+
+```typescript
+{
+  enabled: boolean;         // Master toggle
+  autoExecute: boolean;     // Execute without confirmation
+  minProfitThresholdBps: number;  // e.g., 50 = 0.5%
+  maxGasGwei: number;       // Gas price ceiling
+  maxSlippageBps: number;   // Slippage tolerance
+  usePrivateMempool: boolean; // MEV protection
+  cooldownMs: number;       // Min time between trades
+}
+```
+
+### Latency Improvement (Target)
+
+| Metric | Before | After (Target) |
+|--------|--------|----------------|
+| Price Updates | 2000ms polling | ~100ms WebSocket |
+| End-to-end | 4-6 seconds | <500ms |
+
+### Next Steps for Phase B/C
+
+- Phase B: Rust WebSocket (MORPHEUS), price aggregation (ORACLE)
+- Phase C: C++ hot path with SIMD, lock-free order book
 
 ## What Was Just Completed
 

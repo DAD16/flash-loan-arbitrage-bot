@@ -1,0 +1,22 @@
+[package]
+name = "hotpath"
+description = "HOTPATH - Rust FFI bindings for C++ SIMD hot path"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Internal types
+matrix-types = { path = "../shared/types" }
+
+# Error handling
+thiserror.workspace = true
+
+[build-dependencies]
+# For building the C++ library
+cc = "1.0"
+
+[features]
+default = []
+# Enable when C++ library is built
+ffi = []
