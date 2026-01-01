@@ -16,6 +16,7 @@ import recommendationsRouter from './routes/recommendations.js';
 import performanceRouter from './routes/performance.js';
 import strategyRouter from './routes/strategy.js';
 import ingestionRouter from './routes/ingestion.js';
+import statusRouter from './routes/status.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -52,6 +53,7 @@ app.use('/api/recommendations', recommendationsRouter);
 app.use('/api/performance', performanceRouter);
 app.use('/api/strategy', strategyRouter);
 app.use('/api/ingestion', ingestionRouter);
+app.use('/api/status', statusRouter);
 
 // Overview endpoint - aggregates key metrics
 app.get('/api/overview', async (req: Request, res: Response) => {
@@ -180,6 +182,7 @@ app.listen(PORT, () => {
   ║    *    /api/performance     - Performance metrics        ║
   ║    *    /api/strategy        - Strategy configuration     ║
   ║    *    /api/ingestion       - Data ingestion control     ║
+  ║    GET  /api/status          - System & RPC status        ║
   ╚═══════════════════════════════════════════════════════════╝
   `);
 });

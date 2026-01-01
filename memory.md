@@ -1,19 +1,24 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 02:45
+2026-01-01 04:40
 
 ## What Was Just Completed
-- Fixed Header quick stats - VERIFIED WORKING
-- Before exec: 2.1526 BNB, 75% → After: 2.1995 BNB, 75.38%
-- Header now shows live: 24h Profit, Pending count, Success Rate
-- /api/overview calculates dynamically from executions table
-- Added tx hash link to toast notifications
-- Created `Toast.tsx` component with slide-in animation
-- Added notification state to Zustand store (already existed)
-- Updated `handleExecute` to poll for results and show notifications
-- Success notifications show profit in BNB and USD
-- Error notifications show revert reason
+- Created one-button startup system: `npm run start`
+- Created `dashboard/scripts/startup.ts` with:
+  - Matrix banner display
+  - Environment configuration check
+  - RPC connection verification for all 5 chains
+  - Wallet configuration check with balance display
+  - Database existence check
+  - Automatic service startup (API + Vite)
+  - Summary display with connection status
+- Created `/api/status` endpoint for real-time system health:
+  - RPC connection status for all chains
+  - Wallet configuration and balances
+  - Contract deployment status
+  - Database status
+- Updated `package.json` with `start` script
 
 ## Current Status
 
@@ -24,22 +29,26 @@
 | API Server (9081) | Running |
 | Execute Button | Working with notifications |
 | Toast Notifications | Working |
+| One-Button Startup | Working |
 
-### Notification Features
-- Success: Green toast with profit amount (BNB + USD)
-- Error: Red toast with revert reason
-- Warning: Yellow toast for timeouts
-- Auto-dismiss after 5 seconds
-- Manual dismiss with X button
-- Slide-in animation from right
+### RPC Connections (from /api/status)
+| Chain | Status | Block | Latency |
+|-------|--------|-------|---------|
+| BSC | Connected | 73677461 | 554ms |
+| Ethereum | Connected | 24138934 | 645ms |
+| Arbitrum | Not configured | - | - |
+| Optimism | Not configured | - | - |
+| Base | Not configured | - | - |
 
-### Files Modified This Session
-- `dashboard/src/components/ui/Toast.tsx` - NEW: Toast notification component
-- `dashboard/src/App.tsx` - Added Toast component
-- `dashboard/src/index.css` - Added slide-in animation
-- `dashboard/src/pages/Opportunities.tsx` - Added notification on execute
-- `dashboard/src/api/routes/opportunities.ts` - Execute endpoint
-- `dashboard/src/hooks/useApi.ts` - useExecuteOpportunity hook
+### Wallet Status
+- Not configured (PRIVATE_KEY empty in .env)
+- Execution features disabled until configured
+
+### Files Created/Modified This Session
+- `dashboard/scripts/startup.ts` - NEW: One-button startup script
+- `dashboard/src/api/routes/status.ts` - NEW: System status endpoint
+- `dashboard/src/api/server.ts` - Added status router
+- `dashboard/package.json` - Added `start` script
 
 ## Background Services
 | Service | Task ID | Port |
@@ -48,8 +57,29 @@
 | API Server | bcf33fa | 9081 |
 | Price Ingestion | b21ce00 | - |
 
+## How to Start the Project
+```bash
+cd dashboard
+npm run start
+```
+
+This will:
+1. Display Matrix banner
+2. Check environment configuration
+3. Verify RPC connections to all chains
+4. Check wallet configuration
+5. Check database
+6. Start API server (port 9081)
+7. Start Vite dev server (port 9080)
+8. Display status summary
+
+## API Endpoints
+- `GET /api/status` - Full system status with RPC/wallet checks
+- `GET /api/status/chains` - Quick chain connection check
+- `GET /api/status/wallet` - Wallet configuration status
+
 ## Next Steps
-1. Add sound effects for notifications (optional)
-2. Add execution details modal
-3. Implement real blockchain execution
-4. Add batch execution for multiple opportunities
+1. Configure PRIVATE_KEY in .env for execution features
+2. Configure ARB_RPC_URL, OP_RPC_URL, BASE_RPC_URL for other chains
+3. Deploy contracts to configured chains
+4. Add real blockchain execution (currently simulated)
