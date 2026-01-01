@@ -1,33 +1,184 @@
 /**
  * Wallet Management API Routes
  *
- * Provides endpoints for the dashboard to manage wallets via KEYMAKER.
+ * Standalone wallet management endpoints for the dashboard.
+ * Uses SQLite for persistence and ethers.js for HD wallet derivation.
  */
 
 import { Router, Request, Response } from 'express';
-import { WalletManager } from '@matrix/keymaker';
-import type { ChainId, WalletRole } from '@matrix/keymaker';
+import Database from 'better-sqlite3';
+import { ethers } from 'ethers';
+import { randomUUID } from 'crypto';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync, mkdirSync } from 'fs';
 
-let walletManager: WalletManager | null = null;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export function setWalletManager(manager: WalletManager): void {
-  walletManager = manager;
+// Types
+type ChainId = 1 | 56 | 137 | 42161 | 10 | 8453 | 11155111;
+type WalletRole = 'master' | 'gas_reserve' | 'executor';
+
+interface ManagedWallet {
+  id: string;
+  address: string;
+  chain: ChainId;
+  role: WalletRole;
+  label: string;
+  derivationPath: string;
+  createdAt: number;
+  lastFundedAt: number | null;
+  isActive: boolean;
+}
+
+interface WalletBalance {
+  walletId: string;
+  address: string;
+  chain: ChainId;
+  balanceWei: string;
+  balanceFormatted: string;
+  symbol: string;
+  updatedAt: number;
+  isLow: boolean;
+}
+
+// Chain configurations
+const CHAIN_CONFIG: Record<number, { name: string; symbol: string; rpcUrl: string }> = {
+  1: { name: 'Ethereum', symbol: 'ETH', rpcUrl: process.env.ETH_RPC_URL || 'https://eth.llamarpc.com' },
+  56: { name: 'BSC', symbol: 'BNB', rpcUrl: process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org' },
+  137: { name: 'Polygon', symbol: 'MATIC', rpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com' },
+  42161: { name: 'Arbitrum', symbol: 'ETH', rpcUrl: process.env.ARB_RPC_URL || 'https://arb1.arbitrum.io/rpc' },
+  11155111: { name: 'Sepolia', symbol: 'ETH', rpcUrl: process.env.SEPOLIA_RPC_URL || 'https://rpc.sepolia.org' },
+};
+
+const LOW_BALANCE_THRESHOLDS: Record<number, bigint> = {
+  1: ethers.parseEther('0.05'),
+  56: ethers.parseEther('0.1'),
+  137: ethers.parseEther('5'),
+  42161: ethers.parseEther('0.01'),
+  11155111: ethers.parseEther('0.1'),
+};
+
+// Database setup
+const dataDir = join(__dirname, '..', '..', '..', 'data');
+if (!existsSync(dataDir)) {
+  mkdirSync(dataDir, { recursive: true });
+}
+
+const db = new Database(join(dataDir, 'wallets.db'));
+db.pragma('journal_mode = WAL');
+
+// Initialize schema
+db.exec(`
+  CREATE TABLE IF NOT EXISTS wallets (
+    id TEXT PRIMARY KEY,
+    address TEXT NOT NULL UNIQUE,
+    chain INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    label TEXT NOT NULL,
+    derivation_path TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    last_funded_at INTEGER,
+    is_active INTEGER NOT NULL DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS wallet_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    wallet_id TEXT NOT NULL,
+    contract_address TEXT NOT NULL,
+    chain INTEGER NOT NULL,
+    authorized_at INTEGER NOT NULL,
+    tx_hash TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS wallet_balances (
+    wallet_id TEXT PRIMARY KEY,
+    balance_wei TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS funding_transactions (
+    id TEXT PRIMARY KEY,
+    from_wallet_id TEXT NOT NULL,
+    to_wallet_id TEXT NOT NULL,
+    chain INTEGER NOT NULL,
+    amount_wei TEXT NOT NULL,
+    tx_hash TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    confirmed_at INTEGER
+  );
+`);
+
+// Provider cache
+const providers: Map<number, ethers.JsonRpcProvider> = new Map();
+function getProvider(chain: number): ethers.JsonRpcProvider {
+  if (!providers.has(chain)) {
+    const config = CHAIN_CONFIG[chain];
+    if (!config) throw new Error(`Unknown chain: ${chain}`);
+    providers.set(chain, new ethers.JsonRpcProvider(config.rpcUrl));
+  }
+  return providers.get(chain)!;
+}
+
+// Wallet index for derivation
+let walletIndex = 0;
+const existingWallets = db.prepare('SELECT derivation_path FROM wallets').all() as { derivation_path: string }[];
+if (existingWallets.length > 0) {
+  const maxIndex = Math.max(
+    ...existingWallets.map((w) => {
+      const match = w.derivation_path.match(/\/(\d+)$/);
+      return match ? parseInt(match[1], 10) : 0;
+    })
+  );
+  walletIndex = maxIndex + 1;
+}
+
+// Monitoring state
+let monitoringInterval: NodeJS.Timeout | null = null;
+
+// Helper functions
+function rowToWallet(row: any): ManagedWallet {
+  return {
+    id: row.id,
+    address: row.address,
+    chain: row.chain as ChainId,
+    role: row.role as WalletRole,
+    label: row.label,
+    derivationPath: row.derivation_path,
+    createdAt: row.created_at,
+    lastFundedAt: row.last_funded_at,
+    isActive: row.is_active === 1,
+  };
+}
+
+async function getWalletBalance(wallet: ManagedWallet): Promise<WalletBalance> {
+  const provider = getProvider(wallet.chain);
+  const balanceWei = await provider.getBalance(wallet.address);
+  const threshold = LOW_BALANCE_THRESHOLDS[wallet.chain] || BigInt(0);
+  const config = CHAIN_CONFIG[wallet.chain];
+
+  // Update cached balance
+  const now = Date.now();
+  db.prepare(`
+    INSERT INTO wallet_balances (wallet_id, balance_wei, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(wallet_id) DO UPDATE SET balance_wei = ?, updated_at = ?
+  `).run(wallet.id, balanceWei.toString(), now, balanceWei.toString(), now);
+
+  return {
+    walletId: wallet.id,
+    address: wallet.address,
+    chain: wallet.chain,
+    balanceWei: balanceWei.toString(),
+    balanceFormatted: ethers.formatEther(balanceWei),
+    symbol: config?.symbol || 'ETH',
+    updatedAt: now,
+    isLow: balanceWei < threshold,
+  };
 }
 
 const router = Router();
-
-// Middleware to check if wallet manager is initialized
-const requireWalletManager = (req: Request, res: Response, next: Function) => {
-  if (!walletManager) {
-    return res.status(503).json({
-      success: false,
-      error: 'Wallet manager not initialized',
-    });
-  }
-  next();
-};
-
-router.use(requireWalletManager);
 
 /**
  * GET /api/wallets
@@ -35,17 +186,25 @@ router.use(requireWalletManager);
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const chain = req.query.chain ? parseInt(req.query.chain as string, 10) as ChainId : undefined;
-    const role = req.query.role as WalletRole | undefined;
+    const chain = req.query.chain ? parseInt(req.query.chain as string, 10) : undefined;
+    const role = req.query.role as string | undefined;
 
-    let wallets;
+    let query = 'SELECT * FROM wallets WHERE is_active = 1';
+    const params: any[] = [];
+
     if (chain) {
-      wallets = walletManager!.getWalletsByChain(chain);
-    } else if (role) {
-      wallets = walletManager!.getWalletsByRole(role);
-    } else {
-      wallets = walletManager!.getAllWallets();
+      query += ' AND chain = ?';
+      params.push(chain);
     }
+    if (role) {
+      query += ' AND role = ?';
+      params.push(role);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const rows = db.prepare(query).all(...params);
+    const wallets = rows.map(rowToWallet);
 
     res.json({
       success: true,
@@ -66,10 +225,47 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/summary', async (req: Request, res: Response) => {
   try {
-    const summary = await walletManager!.getSummary();
+    const chainCounts = db.prepare(
+      'SELECT chain, COUNT(*) as count FROM wallets WHERE is_active = 1 GROUP BY chain'
+    ).all() as { chain: number; count: number }[];
+
+    const roleCounts = db.prepare(
+      'SELECT role, COUNT(*) as count FROM wallets WHERE is_active = 1 GROUP BY role'
+    ).all() as { role: string; count: number }[];
+
+    const totalCount = db.prepare(
+      'SELECT COUNT(*) as count FROM wallets WHERE is_active = 1'
+    ).get() as { count: number };
+
+    // Get low balance count from cached balances
+    const wallets = db.prepare('SELECT * FROM wallets WHERE is_active = 1').all().map(rowToWallet);
+    let lowBalanceCount = 0;
+
+    for (const wallet of wallets) {
+      const cached = db.prepare('SELECT balance_wei FROM wallet_balances WHERE wallet_id = ?').get(wallet.id) as { balance_wei: string } | undefined;
+      if (cached) {
+        const threshold = LOW_BALANCE_THRESHOLDS[wallet.chain] || BigInt(0);
+        if (BigInt(cached.balance_wei) < threshold) {
+          lowBalanceCount++;
+        }
+      }
+    }
+
+    const byChain: Record<number, number> = {};
+    chainCounts.forEach((c) => { byChain[c.chain] = c.count; });
+
+    const byRole: Record<string, number> = {};
+    roleCounts.forEach((r) => { byRole[r.role] = r.count; });
+
     res.json({
       success: true,
-      data: summary,
+      data: {
+        totalWallets: totalCount.count,
+        byChain,
+        byRole,
+        lowBalanceCount,
+        totalValueUsd: 0, // TODO: Implement USD value
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -85,7 +281,18 @@ router.get('/summary', async (req: Request, res: Response) => {
  */
 router.get('/balances', async (req: Request, res: Response) => {
   try {
-    const balances = await walletManager!.getAllBalances();
+    const wallets = db.prepare('SELECT * FROM wallets WHERE is_active = 1').all().map(rowToWallet);
+    const balances: WalletBalance[] = [];
+
+    for (const wallet of wallets) {
+      try {
+        const balance = await getWalletBalance(wallet);
+        balances.push(balance);
+      } catch (error) {
+        console.error(`Error fetching balance for ${wallet.address}:`, error);
+      }
+    }
+
     const lowBalanceCount = balances.filter((b) => b.isLow).length;
 
     res.json({
@@ -108,7 +315,19 @@ router.get('/balances', async (req: Request, res: Response) => {
  */
 router.get('/low-balance', async (req: Request, res: Response) => {
   try {
-    const lowBalanceWallets = await walletManager!.getLowBalanceWallets();
+    const wallets = db.prepare('SELECT * FROM wallets WHERE is_active = 1').all().map(rowToWallet);
+    const lowBalanceWallets: WalletBalance[] = [];
+
+    for (const wallet of wallets) {
+      try {
+        const balance = await getWalletBalance(wallet);
+        if (balance.isLow) {
+          lowBalanceWallets.push(balance);
+        }
+      } catch (error) {
+        console.error(`Error fetching balance for ${wallet.address}:`, error);
+      }
+    }
 
     res.json({
       success: true,
@@ -129,22 +348,30 @@ router.get('/low-balance', async (req: Request, res: Response) => {
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const wallet = walletManager!.getWallet(req.params.id);
-    if (!wallet) {
+    const row = db.prepare('SELECT * FROM wallets WHERE id = ?').get(req.params.id);
+    if (!row) {
       return res.status(404).json({
         success: false,
         error: 'Wallet not found',
       });
     }
 
-    // Get balance
-    const balance = await walletManager!.getWalletBalance(req.params.id);
+    const wallet = rowToWallet(row);
+    let balance: WalletBalance | null = null;
 
-    // Get assignments
-    const assignments = walletManager!.getWalletAssignments(req.params.id);
+    try {
+      balance = await getWalletBalance(wallet);
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+    }
 
-    // Get funding history
-    const fundingHistory = walletManager!.getFundingHistory(req.params.id);
+    const assignments = db.prepare(
+      'SELECT * FROM wallet_assignments WHERE wallet_id = ?'
+    ).all(req.params.id);
+
+    const fundingHistory = db.prepare(
+      'SELECT * FROM funding_transactions WHERE to_wallet_id = ? OR from_wallet_id = ? ORDER BY created_at DESC LIMIT 50'
+    ).all(req.params.id, req.params.id);
 
     res.json({
       success: true,
@@ -178,84 +405,56 @@ router.post('/generate', async (req: Request, res: Response) => {
       });
     }
 
-    const result = await walletManager!.generateWallet(
-      chain as ChainId,
-      role as WalletRole,
-      label || `${role}-${Date.now()}`
+    const seedPhrase = process.env.MASTER_SEED_PHRASE;
+    if (!seedPhrase) {
+      return res.status(500).json({
+        success: false,
+        error: 'Master seed phrase not configured (set MASTER_SEED_PHRASE env var)',
+      });
+    }
+
+    const masterNode = ethers.HDNodeWallet.fromPhrase(seedPhrase);
+    const derivationPath = `m/44'/60'/0'/0/${walletIndex}`;
+    const childNode = masterNode.derivePath(derivationPath);
+
+    const chainConfig = CHAIN_CONFIG[chain];
+    const walletLabel = label || `${chainConfig?.name || 'Chain-' + chain}-${role}-${walletIndex}`;
+
+    const wallet: ManagedWallet = {
+      id: randomUUID(),
+      address: childNode.address.toLowerCase(),
+      chain: chain as ChainId,
+      role: role as WalletRole,
+      label: walletLabel,
+      derivationPath,
+      createdAt: Date.now(),
+      lastFundedAt: null,
+      isActive: true,
+    };
+
+    db.prepare(`
+      INSERT INTO wallets (id, address, chain, role, label, derivation_path, created_at, last_funded_at, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      wallet.id,
+      wallet.address,
+      wallet.chain,
+      wallet.role,
+      wallet.label,
+      wallet.derivationPath,
+      wallet.createdAt,
+      wallet.lastFundedAt,
+      wallet.isActive ? 1 : 0
     );
 
-    // Don't return private key in response for security
-    res.json({
-      success: true,
-      data: {
-        wallet: result.wallet,
-        // privateKey is intentionally omitted
-      },
-      message: `Wallet ${result.wallet.address} generated successfully`,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-});
+    walletIndex++;
 
-/**
- * POST /api/wallets/generate/executor
- * Generate a new executor wallet
- */
-router.post('/generate/executor', async (req: Request, res: Response) => {
-  try {
-    const { chain, label } = req.body;
-
-    if (!chain) {
-      return res.status(400).json({
-        success: false,
-        error: 'chain is required',
-      });
-    }
-
-    const result = await walletManager!.generateExecutorWallet(chain as ChainId, label);
+    console.log(`Generated wallet: ${wallet.label} (${wallet.address})`);
 
     res.json({
       success: true,
-      data: {
-        wallet: result.wallet,
-      },
-      message: `Executor wallet ${result.wallet.address} generated successfully`,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: (error as Error).message,
-    });
-  }
-});
-
-/**
- * POST /api/wallets/generate/gas-reserve
- * Generate a new gas reserve wallet
- */
-router.post('/generate/gas-reserve', async (req: Request, res: Response) => {
-  try {
-    const { chain } = req.body;
-
-    if (!chain) {
-      return res.status(400).json({
-        success: false,
-        error: 'chain is required',
-      });
-    }
-
-    const result = await walletManager!.generateGasReserveWallet(chain as ChainId);
-
-    res.json({
-      success: true,
-      data: {
-        wallet: result.wallet,
-      },
-      message: `Gas reserve wallet ${result.wallet.address} generated successfully`,
+      data: { wallet },
+      message: `Wallet ${wallet.address} generated successfully`,
     });
   } catch (error) {
     res.status(500).json({
@@ -267,24 +466,13 @@ router.post('/generate/gas-reserve', async (req: Request, res: Response) => {
 
 /**
  * POST /api/wallets/:id/fund
- * Fund a specific wallet from gas reserve
+ * Fund a specific wallet (placeholder - requires private key access)
  */
 router.post('/:id/fund', async (req: Request, res: Response) => {
   try {
-    const { amountWei } = req.body;
-    const tx = await walletManager!.fundWallet(req.params.id, amountWei);
-
-    if (!tx) {
-      return res.status(400).json({
-        success: false,
-        error: 'Unable to fund wallet (no gas reserve or insufficient balance)',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: tx,
-      message: `Funding transaction ${tx.txHash} submitted`,
+    res.status(501).json({
+      success: false,
+      error: 'Funding requires KEYMAKER agent with vault access. Use CLI or run full agent.',
     });
   } catch (error) {
     res.status(500).json({
@@ -296,17 +484,13 @@ router.post('/:id/fund', async (req: Request, res: Response) => {
 
 /**
  * POST /api/wallets/auto-fund
- * Auto-fund all low balance wallets
+ * Auto-fund all low balance wallets (placeholder)
  */
 router.post('/auto-fund', async (req: Request, res: Response) => {
   try {
-    const transactions = await walletManager!.autoFundLowBalanceWallets();
-
-    res.json({
-      success: true,
-      data: transactions,
-      count: transactions.length,
-      message: `${transactions.length} funding transactions submitted`,
+    res.status(501).json({
+      success: false,
+      error: 'Auto-funding requires KEYMAKER agent with vault access. Use CLI or run full agent.',
     });
   } catch (error) {
     res.status(500).json({
@@ -331,12 +515,10 @@ router.post('/:id/authorize', async (req: Request, res: Response) => {
       });
     }
 
-    walletManager!.recordAuthorization(
-      req.params.id,
-      contractAddress,
-      chain as ChainId,
-      txHash
-    );
+    db.prepare(`
+      INSERT INTO wallet_assignments (wallet_id, contract_address, chain, authorized_at, tx_hash)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(req.params.id, contractAddress.toLowerCase(), chain, Date.now(), txHash);
 
     res.json({
       success: true,
@@ -356,7 +538,35 @@ router.post('/:id/authorize', async (req: Request, res: Response) => {
  */
 router.post('/monitoring/start', (req: Request, res: Response) => {
   try {
-    walletManager!.startMonitoring();
+    if (monitoringInterval) {
+      return res.json({
+        success: true,
+        message: 'Monitoring already running',
+      });
+    }
+
+    monitoringInterval = setInterval(async () => {
+      console.log('[Wallet Monitor] Checking balances...');
+      const wallets = db.prepare('SELECT * FROM wallets WHERE is_active = 1').all().map(rowToWallet);
+      let lowCount = 0;
+
+      for (const wallet of wallets) {
+        try {
+          const balance = await getWalletBalance(wallet);
+          if (balance.isLow) {
+            lowCount++;
+            console.log(`[Wallet Monitor] Low balance: ${wallet.label} - ${balance.balanceFormatted} ${balance.symbol}`);
+          }
+        } catch (error) {
+          // Ignore individual balance fetch errors
+        }
+      }
+
+      if (lowCount > 0) {
+        console.log(`[Wallet Monitor] ${lowCount} wallets have low balance`);
+      }
+    }, 60000); // Check every minute
+
     res.json({
       success: true,
       message: 'Balance monitoring started',
@@ -375,7 +585,11 @@ router.post('/monitoring/start', (req: Request, res: Response) => {
  */
 router.post('/monitoring/stop', (req: Request, res: Response) => {
   try {
-    walletManager!.stopMonitoring();
+    if (monitoringInterval) {
+      clearInterval(monitoringInterval);
+      monitoringInterval = null;
+    }
+
     res.json({
       success: true,
       message: 'Balance monitoring stopped',

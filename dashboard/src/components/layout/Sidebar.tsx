@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  Wallet,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import clsx from 'clsx';
@@ -16,6 +17,7 @@ import clsx from 'clsx';
 const navItems = [
   { path: '/overview', icon: LayoutDashboard, label: 'Overview' },
   { path: '/prices', icon: TrendingUp, label: 'Live Prices' },
+  { path: '/wallets', icon: Wallet, label: 'Wallets' },
   { path: '/competitors', icon: Users, label: 'Competitors' },
   { path: '/opportunities', icon: Zap, label: 'Opportunities' },
   { path: '/strategy', icon: Settings, label: 'Strategy' },

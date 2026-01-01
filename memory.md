@@ -1,9 +1,24 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 (KEYMAKER Wallet Management)
+2026-01-01 (Wallet Dashboard UI)
 
 ## What Was Just Completed
+
+### Wallet Dashboard UI
+Created the wallet management dashboard page:
+- `dashboard/src/pages/Wallets.tsx` - Full wallet management UI with:
+  - Summary cards (total wallets, by role, low balance count)
+  - Wallet list with balances, chain, role badges
+  - Generate wallet modal (chain, role, label selection)
+  - Wallet details modal (balance, assignments, funding history)
+  - Copy address, external explorer links
+  - Balance monitoring controls
+- Added wallet route to sidebar navigation
+- Integrated `/api/wallets` routes into API server
+- Added ethers dependency to dashboard
+
+---
 
 ### KEYMAKER Wallet Management System (PROJECT 1)
 Implemented the multi-wallet management system for KEYMAKER agent:

@@ -19,6 +19,7 @@ import ingestionRouter from './routes/ingestion.js';
 import statusRouter from './routes/status.js';
 import executeRouter from './routes/execute.js';
 import pricesRouter from './routes/prices.js';
+import walletsRouter from './routes/wallets.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/ingestion', ingestionRouter);
 app.use('/api/status', statusRouter);
 app.use('/api/execute', executeRouter);
 app.use('/api/prices', pricesRouter);
+app.use('/api/wallets', walletsRouter);
 
 // Overview endpoint - aggregates key metrics
 app.get('/api/overview', async (req: Request, res: Response) => {
@@ -187,6 +189,7 @@ app.listen(PORT, () => {
   ║    *    /api/strategy        - Strategy configuration     ║
   ║    *    /api/ingestion       - Data ingestion control     ║
   ║    *    /api/prices          - Live price monitoring      ║
+  ║    *    /api/wallets         - Wallet management          ║
   ║    GET  /api/status          - System & RPC status        ║
   ╚═══════════════════════════════════════════════════════════╝
   `);
