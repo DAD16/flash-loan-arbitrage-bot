@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Chain = 'bsc' | 'ethereum' | 'arbitrum' | 'optimism' | 'base';
+export type Chain = 'bsc' | 'ethereum' | 'arbitrum' | 'optimism' | 'base' | 'sepolia';
 
 interface AppState {
   // Chain selection
@@ -32,8 +32,8 @@ interface Notification {
 }
 
 export const useStore = create<AppState>((set) => ({
-  // Chain selection - default to BSC
-  selectedChain: 'bsc',
+  // Chain selection - default to Sepolia (testnet)
+  selectedChain: 'sepolia',
   setSelectedChain: (chain) => set({ selectedChain: chain }),
 
   // Sidebar - start expanded

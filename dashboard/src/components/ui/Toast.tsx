@@ -18,6 +18,7 @@ const colorMap = {
 };
 
 const explorerUrls: Record<string, string> = {
+  sepolia: 'https://sepolia.etherscan.io/tx/',
   bsc: 'https://bscscan.com/tx/',
   ethereum: 'https://etherscan.io/tx/',
   arbitrum: 'https://arbiscan.io/tx/',

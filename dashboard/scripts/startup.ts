@@ -8,7 +8,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { createPublicClient, http, formatEther, type Chain } from 'viem';
-import { mainnet, arbitrum, optimism, base, bsc } from 'viem/chains';
+import { mainnet, arbitrum, optimism, base, bsc, sepolia } from 'viem/chains';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as net from 'net';
@@ -84,6 +84,7 @@ interface ChainConfig {
 }
 
 const chains: ChainConfig[] = [
+  { name: 'Sepolia', chain: sepolia, rpcEnvVar: 'SEPOLIA_RPC_URL', symbol: 'ETH' },
   { name: 'BSC', chain: bsc, rpcEnvVar: 'BSC_RPC_URL', symbol: 'BNB' },
   { name: 'Ethereum', chain: mainnet, rpcEnvVar: 'ETH_RPC_URL', symbol: 'ETH' },
   { name: 'Arbitrum', chain: arbitrum, rpcEnvVar: 'ARB_RPC_URL', symbol: 'ETH' },

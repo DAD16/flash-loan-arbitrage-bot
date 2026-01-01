@@ -1,61 +1,57 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 04:40
+2026-01-01 05:35
 
 ## What Was Just Completed
-- Created one-button startup system: `npm run start`
-- Created `dashboard/scripts/startup.ts` with:
-  - Matrix banner display
-  - Environment configuration check
-  - RPC connection verification for all 5 chains
-  - Wallet configuration check with balance display
-  - Database existence check
-  - Automatic service startup (API + Vite)
-  - Summary display with connection status
-- Created `/api/status` endpoint for real-time system health:
-  - RPC connection status for all chains
-  - Wallet configuration and balances
-  - Contract deployment status
-  - Database status
-- Updated `package.json` with `start` script
+- Added Sepolia testnet support to dashboard
+- Sepolia is now the default chain
+- All components updated: Header, Toast, Store, Status API, Startup Script
 
 ## Current Status
+
+### Sepolia Testnet Contracts
+| Contract | Address |
+|----------|---------|
+| FlashLoanReceiver | `0xD94aeF4a31315398b8603041a60a607Dea0f598D` |
+| MultiDexRouter | `0x407dB4F63367B719b00d232023088C4C07334ac2` |
+| Owner/Deployer | `0x5901DCe2aE9B4f4267B0A8880567eD6c997B5fF0` |
+
+### Wallet Balances
+- **Sepolia ETH**: 0.251 ETH
+- **BSC BNB**: 0.1664 BNB
+- **Ethereum**: 0.0000 ETH
 
 ### Dashboard - FULLY FUNCTIONAL
 | Component | Status |
 |-----------|--------|
 | Vite Dev Server (9080) | Running |
 | API Server (9081) | Running |
-| Execute Button | Working with notifications |
+| Execute Button | Working |
 | Toast Notifications | Working |
 | One-Button Startup | Working |
+| Wallet | Configured ✓ |
+| Contracts | Deployed ✓ |
+| Sepolia Support | Added ✓ |
 
-### RPC Connections (from /api/status)
-| Chain | Status | Block | Latency |
-|-------|--------|-------|---------|
-| BSC | Connected | 73677461 | 554ms |
-| Ethereum | Connected | 24138934 | 645ms |
-| Arbitrum | Not configured | - | - |
-| Optimism | Not configured | - | - |
-| Base | Not configured | - | - |
+### RPC Connections
+| Chain | Status |
+|-------|--------|
+| Sepolia | Connected ✓ (default) |
+| BSC | Connected ✓ |
+| Ethereum | Connected ✓ |
+| Arbitrum | Not configured |
+| Optimism | Not configured |
+| Base | Not configured |
 
-### Wallet Status
-- Not configured (PRIVATE_KEY empty in .env)
-- Execution features disabled until configured
-
-### Files Created/Modified This Session
-- `dashboard/scripts/startup.ts` - NEW: One-button startup script
-- `dashboard/src/api/routes/status.ts` - NEW: System status endpoint
-- `dashboard/src/api/server.ts` - Added status router
-- `dashboard/package.json` - Added `start` script
-
-## Background Services
-| Service | Task ID | Port |
-|---------|---------|------|
-| Vite Dev Server | b1066c0 | 9080 |
-| API Server | bcf33fa | 9081 |
-| Price Ingestion | b21ce00 | - |
+## Files Modified This Session
+- `dashboard/src/store/useStore.ts` - Added sepolia to Chain type, set as default
+- `dashboard/src/components/layout/Header.tsx` - Added Sepolia chain button
+- `dashboard/src/components/ui/Toast.tsx` - Added Sepolia explorer URL
+- `dashboard/src/api/routes/status.ts` - Added Sepolia chain config
+- `dashboard/scripts/startup.ts` - Added Sepolia chain config
+- `.env` - Added PRIVATE_KEY and SEPOLIA_RPC_URL
+- `deployments/sepolia.json` - Updated with new contract addresses
 
 ## How to Start the Project
 ```bash
@@ -63,23 +59,19 @@ cd dashboard
 npm run start
 ```
 
-This will:
-1. Display Matrix banner
-2. Check environment configuration
-3. Verify RPC connections to all chains
-4. Check wallet configuration
-5. Check database
-6. Start API server (port 9081)
-7. Start Vite dev server (port 9080)
-8. Display status summary
+## Contract Explorer Links
+- FlashLoanReceiver: https://sepolia.etherscan.io/address/0xD94aeF4a31315398b8603041a60a607Dea0f598D
+- MultiDexRouter: https://sepolia.etherscan.io/address/0x407dB4F63367B719b00d232023088C4C07334ac2
 
-## API Endpoints
-- `GET /api/status` - Full system status with RPC/wallet checks
-- `GET /api/status/chains` - Quick chain connection check
-- `GET /api/status/wallet` - Wallet configuration status
+## SECURITY NOTES
+1. Seed phrase was shared in chat - consider creating new wallet for production
+2. Private key is stored in .env (gitignored)
+3. Current wallet is suitable for testnet only
 
 ## Next Steps
-1. Configure PRIVATE_KEY in .env for execution features
-2. Configure ARB_RPC_URL, OP_RPC_URL, BASE_RPC_URL for other chains
-3. Deploy contracts to configured chains
-4. Add real blockchain execution (currently simulated)
+1. ~~Configure wallet private key~~ ✓ DONE
+2. ~~Redeploy contracts on Sepolia~~ ✓ DONE
+3. ~~Add Sepolia testnet support to dashboard~~ ✓ DONE
+4. Test real execution on Sepolia testnet
+5. Configure additional chains (ARB, OP, Base)
+6. (Optional) Get Etherscan API key for contract verification

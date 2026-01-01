@@ -1,21 +1,21 @@
 {
   "chain": "sepolia",
   "chainId": 11155111,
-  "deployedAt": "2024-12-31T19:30:00Z",
-  "deployer": "0xADD694d04A52DfB212e965F1A3A61F30d2F7B694",
+  "deployedAt": "2026-01-01T10:20:00Z",
+  "deployer": "0x5901DCe2aE9B4f4267B0A8880567eD6c997B5fF0",
   "contracts": {
-    "FlashLoanReceiver": "0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7",
-    "MultiDexRouter": "0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"
+    "FlashLoanReceiver": "0xD94aeF4a31315398b8603041a60a607Dea0f598D",
+    "MultiDexRouter": "0x407dB4F63367B719b00d232023088C4C07334ac2"
   },
   "explorer": {
-    "FlashLoanReceiver": "https://sepolia.etherscan.io/address/0x5c5b7CC9518206E91071F9C1B04Ebe32Ec31d5c7",
-    "MultiDexRouter": "https://sepolia.etherscan.io/address/0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"
+    "FlashLoanReceiver": "https://sepolia.etherscan.io/address/0xD94aeF4a31315398b8603041a60a607Dea0f598D",
+    "MultiDexRouter": "https://sepolia.etherscan.io/address/0x407dB4F63367B719b00d232023088C4C07334ac2"
   },
-  "verified": true,
+  "verified": false,
   "configuration": {
     "aavePoolProvider": "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A",
-    "authorizedExecutors": ["0xADD694d04A52DfB212e965F1A3A61F30d2F7B694"],
-    "whitelistedDexes": ["0x78700C3B41D73167125Ee52DCB6346Bba97Eb7Ac"],
+    "authorizedExecutors": ["0x5901DCe2aE9B4f4267B0A8880567eD6c997B5fF0"],
+    "whitelistedDexes": ["0x407dB4F63367B719b00d232023088C4C07334ac2"],
     "minProfitBps": 10
   },
   "status": "ready"

@@ -6,7 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { createPublicClient, http, formatEther, type Chain } from 'viem';
-import { mainnet, arbitrum, optimism, base, bsc } from 'viem/chains';
+import { mainnet, arbitrum, optimism, base, bsc, sepolia } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -47,6 +47,14 @@ interface ChainConfig {
 }
 
 const chains: ChainConfig[] = [
+  {
+    id: 'sepolia',
+    name: 'Sepolia Testnet',
+    chain: sepolia,
+    rpcEnvVar: 'SEPOLIA_RPC_URL',
+    symbol: 'ETH',
+    explorer: 'https://sepolia.etherscan.io'
+  },
   {
     id: 'bsc',
     name: 'BNB Smart Chain',

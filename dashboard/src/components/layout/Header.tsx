@@ -4,12 +4,13 @@ import { useOverview } from '../../hooks/useApi';
 import { formatEther } from 'viem';
 import clsx from 'clsx';
 
-const chains: { id: Chain; name: string; color: string }[] = [
-  { id: 'bsc', name: 'BSC', color: '#F0B90B' },
-  { id: 'ethereum', name: 'ETH', color: '#627EEA' },
-  { id: 'arbitrum', name: 'ARB', color: '#28A0F0' },
-  { id: 'optimism', name: 'OP', color: '#FF0420' },
-  { id: 'base', name: 'BASE', color: '#0052FF' },
+const chains: { id: Chain; name: string; color: string; symbol: string }[] = [
+  { id: 'sepolia', name: 'SEPOLIA', color: '#627EEA', symbol: 'ETH' },
+  { id: 'bsc', name: 'BSC', color: '#F0B90B', symbol: 'BNB' },
+  { id: 'ethereum', name: 'ETH', color: '#627EEA', symbol: 'ETH' },
+  { id: 'arbitrum', name: 'ARB', color: '#28A0F0', symbol: 'ETH' },
+  { id: 'optimism', name: 'OP', color: '#FF0420', symbol: 'ETH' },
+  { id: 'base', name: 'BASE', color: '#0052FF', symbol: 'ETH' },
 ];
 
 export default function Header() {
@@ -61,7 +62,7 @@ export default function Header() {
 
       {/* Center: Quick Stats */}
       <div className="flex items-center gap-6">
-        <QuickStat label="24h Profit" value={`${todayProfit} BNB`} positive={parseFloat(todayProfit) >= 0} />
+        <QuickStat label="24h Profit" value={`${todayProfit} ${chains.find(c => c.id === selectedChain)?.symbol || 'ETH'}`} positive={parseFloat(todayProfit) >= 0} />
         <QuickStat label="Pending" value={pendingCount.toString()} />
         <QuickStat label="Success Rate" value={`${successRate.toFixed(1)}%`} />
       </div>
