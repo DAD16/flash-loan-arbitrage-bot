@@ -1,7 +1,7 @@
 {
   "name": "@matrix/keymaker",
-  "version": "0.1.0",
-  "description": "KEYMAKER - Secrets and Authentication Management for Matrix",
+  "version": "0.2.0",
+  "description": "KEYMAKER - Secrets, Authentication, and Wallet Management for Matrix",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,10 +15,12 @@
   },
   "dependencies": {
     "@matrix/shared": "workspace:*",
+    "better-sqlite3": "^11.0.0",
     "ethers": "^6.9.0",
     "node-vault": "^0.10.2"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
     "@types/node-vault": "^0.9.19"
   }
 }

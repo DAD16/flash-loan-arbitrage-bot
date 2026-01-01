@@ -49,6 +49,12 @@
       "decision": "Multi-instance setup created",
       "made_by": "root",
       "affects": ["all"]
+    },
+    {
+      "date": "2026-01-01",
+      "decision": "KEYMAKER wallet management system implemented",
+      "made_by": "root",
+      "affects": ["agents", "dashboard"]
     }
   ],
 
