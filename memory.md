@@ -1,14 +1,13 @@
 # Memory - Flash Loan Arbitrage Bot
 
 ## Last Updated
-2026-01-01 10:30
+2026-01-01 10:40
 
 ## What Was Just Completed
-- Added live price monitoring for arbitrage opportunities
-- Created `/api/prices/*` endpoints for real-time DEX price data
-- Built "Live Prices" dashboard page with auto-refresh
-- Tested on BSC mainnet: 24 opportunities detected in 93 seconds
-- Found profitable CAKE/USDT trade (4.08% spread, ~$20 profit)
+- Deployed FlashLoanReceiver and MultiDexRouter to BSC mainnet
+- Authorized executor wallet on BSC contracts
+- Created BSC deployment configuration
+- System ready for real flash loan arbitrage on BSC
 
 ## Current Status
 
@@ -35,6 +34,14 @@
 | Contracts Deployed | ✓ |
 | Executor Authorized | ✓ |
 | Test TX Sent | ✓ Block 9958095 |
+
+### BSC Mainnet Contracts - LIVE
+| Contract | Address |
+|----------|---------|
+| FlashLoanReceiver | `0xD94aeF4a31315398b8603041a60a607Dea0f598D` |
+| MultiDexRouter | `0x407dB4F63367B719b00d232023088C4C07334ac2` |
+| Owner/Deployer | `0x5901DCe2aE9B4f4267B0A8880567eD6c997B5fF0` |
+| Executor Authorized | ✓ TX: `0x24fd7513...` |
 
 ### Sepolia Testnet Contracts
 | Contract | Address |
@@ -126,6 +133,7 @@ curl -X POST http://localhost:9081/api/prices/start \
 3. ~~Add Sepolia testnet support to dashboard~~ ✓ DONE
 4. ~~Test real execution on Sepolia~~ ✓ DONE
 5. ~~Add price monitoring for real arbitrage opportunities~~ ✓ DONE
-6. Configure additional chains (ARB, OP, Base)
-7. Deploy contracts to BSC for real arbitrage
-8. Execute real flash loan arbitrage when profitable
+6. ~~Deploy contracts to BSC for real arbitrage~~ ✓ DONE
+7. Execute real flash loan arbitrage when profitable
+8. Configure additional chains (ARB, OP, Base)
+9. Add automated execution when opportunities detected
