@@ -59,7 +59,51 @@
 
 ## Agent Mouse Status
 
-Agent Mouse was running a research task in a separate worktree (`Flash-Loan-Research-1`). Check its status or task persistence in `agents/tasks/` directory.
+Agent Mouse completed a comprehensive MEV Protection research report:
+- **Report**: `docs/MEV_PROTECTION_AND_TITAN_BUILDER_REPORT.md` (1,194 lines)
+- **Worktree**: `Flash-Loan-Research-1` exists and is synced
+
+### MEV Report Summary
+
+The report covers:
+1. **MEV Landscape** - Front-running, sandwich attacks, back-running
+2. **Block Builder Market** - Titan (51%), BuilderNet (28%), market concentration
+3. **Titan Builder Deep Dive** - API, endpoints, bundle submission
+4. **Private RPC Integration** - Flashbots Protect, MEV Blocker, Merkle
+5. **Implementation Guide** - 4-layer protection strategy with code examples
+6. **Infrastructure Costs** - ~$3.68M/year to run a competitive builder
+
+### Immediate Actions from MEV Report (Next Session)
+
+| Priority | Action | Status |
+|----------|--------|--------|
+| 1 | Configure Flashbots Protect as default RPC | **TODO** |
+| 2 | Add Titan Builder bundle submission | **TODO** |
+| 3 | Implement fallback RPC strategy | **TODO** |
+| 4 | Set up bundle status monitoring | **TODO** |
+
+### Code to Implement (from report)
+
+Files to create:
+- `src/config/rpc-config.ts` - Private RPC configuration
+- `src/services/private-transaction.service.ts` - Private tx service
+- `src/services/titan-builder.service.ts` - Titan bundle submission
+- `src/services/protected-arbitrage.service.ts` - Protected execution
+
+### Short-Term Tasks (from report)
+
+- Remove Etherscan contract verification (protects strategy)
+- Implement MEV refund tracking
+- Add multi-builder submission (Titan + Flashbots + others)
+- Implement commit-reveal for sensitive operations
+
+### Agent Mouse Open Suggestions (from memory)
+
+1. Implement Sankey-style token flow diagrams like EigenPhi
+2. Add transaction classification badges (arbitrage, sandwich, liquidation)
+3. Create P&L summary cards for each transaction
+4. Build multi-chain selector (ETH, ARB, OP, Base, BSC)
+5. Implement daily MEV report dashboard section
 
 ---
 *Session ended: 2026-01-02*
