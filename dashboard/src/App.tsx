@@ -9,6 +9,7 @@ import Opportunities from './pages/Opportunities';
 import Strategy from './pages/Strategy';
 import AIInsights from './pages/AIInsights';
 import History from './pages/History';
+import Contracts from './pages/Contracts';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/strategy" element={<Strategy />} />
           <Route path="/ai-insights" element={<AIInsights />} />
           <Route path="/history" element={<History />} />
+          <Route path="/contracts" element={<Contracts />} />
         </Routes>
       </Layout>
       <Toast />

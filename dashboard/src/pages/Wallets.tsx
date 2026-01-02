@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Wallet,
   Plus,
@@ -128,21 +128,26 @@ export default function Wallets() {
   const [newWalletRole, setNewWalletRole] = useState<'executor' | 'gas_reserve'>('executor');
   const [newWalletLabel, setNewWalletLabel] = useState('');
 
-  const fetchWallets = useCallback(async () => {
+  // Optimized: Single API call for all data
+  const fetchAll = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/wallets`);
+      const response = await fetch(`${API_BASE}/api/wallets/all`);
       const data = await response.json();
       if (data.success) {
-        setWallets(data.data || []);
+        setWallets(data.data.wallets || []);
+        setBalances(data.data.balances || []);
+        setSummary(data.data.summary || null);
       }
     } catch (error) {
-      console.error('Error fetching wallets:', error);
+      console.error('Error fetching wallet data:', error);
     }
+    setLoading(false);
   }, []);
 
-  const fetchBalances = useCallback(async () => {
+  // Fallback individual fetches for refresh with fresh balances
+  const fetchFreshBalances = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/wallets/balances`);
+      const response = await fetch(`${API_BASE}/api/wallets/balances?cached=false`);
       const data = await response.json();
       if (data.success) {
         setBalances(data.data || []);
@@ -152,31 +157,17 @@ export default function Wallets() {
     }
   }, []);
 
-  const fetchSummary = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/wallets/summary`);
-      const data = await response.json();
-      if (data.success) {
-        setSummary(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching summary:', error);
-    }
-  }, []);
-
-  const fetchAll = useCallback(async () => {
-    await Promise.all([fetchWallets(), fetchBalances(), fetchSummary()]);
-    setLoading(false);
-  }, [fetchWallets, fetchBalances, fetchSummary]);
-
   const handleRefresh = async () => {
     setRefreshing(true);
+    // Fetch fresh balances (bypass cache)
+    await fetchFreshBalances();
+    // Also refresh full data
     await fetchAll();
     setRefreshing(false);
     addNotification({
       type: 'success',
       title: 'Refreshed',
-      message: 'Wallet data updated',
+      message: 'Wallet data updated with fresh balances',
     });
   };
 
@@ -252,7 +243,7 @@ export default function Wallets() {
           title: 'Funding Initiated',
           message: `TX: ${data.data.txHash.slice(0, 16)}...`,
         });
-        fetchBalances();
+        fetchFreshBalances();
       } else {
         addNotification({
           type: 'error',
@@ -283,7 +274,7 @@ export default function Wallets() {
           title: 'Auto-Fund Complete',
           message: `${data.count} transactions submitted`,
         });
-        fetchBalances();
+        fetchFreshBalances();
       } else {
         addNotification({
           type: 'error',
@@ -334,8 +325,17 @@ export default function Wallets() {
     });
   };
 
+  // Use Map for O(1) balance lookups instead of O(n) array search
+  const balanceMap = useMemo(() => {
+    const map = new Map<string, WalletBalance>();
+    for (const b of balances) {
+      map.set(b.walletId, b);
+    }
+    return map;
+  }, [balances]);
+
   const getBalanceForWallet = (walletId: string) => {
-    return balances.find((b) => b.walletId === walletId);
+    return balanceMap.get(walletId);
   };
 
   const getRoleBadgeVariant = (role: string) => {

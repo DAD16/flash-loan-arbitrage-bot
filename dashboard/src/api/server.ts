@@ -28,6 +28,7 @@ import executeRouter from './routes/execute.js';
 import pricesRouter from './routes/prices.js';
 import walletsRouter from './routes/wallets.js';
 import fastModeRouter from './routes/fastMode.js';
+import contractsRouter from './routes/contracts.js';
 
 // Import WebSocket server
 import { startWebSocketServer, getWebSocketServer } from '../services/websocketServer.js';
@@ -72,6 +73,7 @@ app.use('/api/execute', executeRouter);
 app.use('/api/prices', pricesRouter);
 app.use('/api/wallets', walletsRouter);
 app.use('/api/fast-mode', fastModeRouter);
+app.use('/api/contracts', contractsRouter);
 
 // Overview endpoint - aggregates key metrics
 app.get('/api/overview', async (req: Request, res: Response) => {

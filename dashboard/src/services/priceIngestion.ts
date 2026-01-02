@@ -11,6 +11,7 @@ import Database from 'better-sqlite3';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
+import { getWebSocketServer } from './websocketServer.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = join(__dirname, '../../db/matrix.db');
@@ -397,6 +398,25 @@ export class PriceIngestionService {
         pair.price1 = this.calculatePrice(reserve1, reserve0, pair.decimals1, pair.decimals0);
         pair.lastUpdate = new Date();
         this.stats.priceUpdates++;
+
+        // Broadcast price update via WebSocket
+        try {
+          const wsServer = getWebSocketServer();
+          if (wsServer.isRunning()) {
+            wsServer.broadcastPriceUpdate({
+              pair: `${pair.symbol0}/${pair.symbol1}`,
+              dex: pair.dex,
+              price: pair.price0,
+              reserves: {
+                token0: pair.reserve0.toString(),
+                token1: pair.reserve1.toString(),
+              },
+              timestamp: Date.now(),
+            });
+          }
+        } catch {
+          // WebSocket not available, continue without broadcasting
+        }
       }
     } catch (error) {
       // Skip failed updates
@@ -471,6 +491,29 @@ export class PriceIngestionService {
 
               await this.saveOpportunity(opportunity);
               this.stats.opportunitiesDetected++;
+
+              // Broadcast opportunity via WebSocket
+              try {
+                const wsServer = getWebSocketServer();
+                if (wsServer.isRunning()) {
+                  // Calculate net profit after gas costs (rough estimate)
+                  const gasCostBps = 15; // ~0.15% for typical gas
+                  const netProfitBps = opportunity.estimatedProfitBps - gasCostBps;
+
+                  wsServer.broadcastOpportunity({
+                    id: opportunity.id,
+                    pair: `${opportunity.symbol0}/${opportunity.symbol1}`,
+                    buyDex: opportunity.buyDex,
+                    sellDex: opportunity.sellDex,
+                    spreadBps: opportunity.spreadBps,
+                    netProfitBps,
+                    estimatedProfitUsd: opportunity.estimatedProfitUsd,
+                    timestamp: Date.now(),
+                  });
+                }
+              } catch {
+                // WebSocket not available, continue without broadcasting
+              }
 
               console.log(
                 `⚡ ARB: ${pairA.symbol0}/${pairA.symbol1} | ` +

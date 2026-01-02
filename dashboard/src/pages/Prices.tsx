@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -9,12 +9,25 @@ import {
   Zap,
   DollarSign,
   Clock,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import clsx from 'clsx';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import FastModeControl from '../components/FastModeControl';
-import { useStore } from '../store/useStore';
+import { useStore, type Chain } from '../store/useStore';
+import { useLivePrices, useLiveOpportunities, type PriceUpdate, type OpportunityUpdate } from '../hooks/useWebSocket';
+
+// Chain-specific configurations for price monitoring
+const CHAIN_CONFIGS: Record<Chain, { name: string; supported: boolean; symbol: string }> = {
+  bsc: { name: 'BSC', supported: true, symbol: 'BNB' },
+  sepolia: { name: 'Sepolia', supported: false, symbol: 'ETH' },
+  ethereum: { name: 'Ethereum', supported: false, symbol: 'ETH' },
+  arbitrum: { name: 'Arbitrum', supported: false, symbol: 'ETH' },
+  base: { name: 'Base', supported: false, symbol: 'ETH' },
+  optimism: { name: 'Optimism', supported: false, symbol: 'ETH' },
+};
 
 interface PriceStatus {
   running: boolean;
@@ -61,7 +74,8 @@ interface LivePrice {
 const API_BASE = 'http://localhost:9081';
 
 export default function Prices() {
-  const { addNotification } = useStore();
+  const { addNotification, selectedChain } = useStore();
+  const chainConfig = CHAIN_CONFIGS[selectedChain];
   const [status, setStatus] = useState<PriceStatus | null>(null);
   const [spreads, setSpreads] = useState<Spread[]>([]);
   const [summary, setSummary] = useState<SpreadSummary | null>(null);
@@ -70,6 +84,84 @@ export default function Prices() {
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // WebSocket hooks for real-time updates
+  const { connected: wsPricesConnected, prices: wsPrices, latency } = useLivePrices();
+  const { connected: wsOpportunitiesConnected, opportunities: wsOpportunities } = useLiveOpportunities();
+  const wsConnected = wsPricesConnected || wsOpportunitiesConnected;
+
+  // Merge WebSocket price updates into livePrices view
+  const mergedLivePrices = useMemo(() => {
+    if (!wsConnected || wsPrices.length === 0) {
+      return livePrices;
+    }
+
+    // Group WebSocket prices by pair
+    const wsPricesByPair = new Map<string, PriceUpdate[]>();
+    for (const p of wsPrices) {
+      const existing = wsPricesByPair.get(p.pair) || [];
+      existing.push(p);
+      wsPricesByPair.set(p.pair, existing);
+    }
+
+    // Create merged price data
+    const merged: LivePrice[] = [];
+    for (const [pair, updates] of wsPricesByPair) {
+      const prices = updates.map(u => u.price).filter(p => p > 0);
+      if (prices.length === 0) continue;
+
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const spreadBps = maxPrice > 0 ? Math.round(((maxPrice - minPrice) / minPrice) * 10000) : 0;
+
+      merged.push({
+        pair,
+        dexCount: updates.length,
+        minPrice,
+        maxPrice,
+        spreadBps,
+        dexes: updates.map(u => ({
+          dex: u.dex,
+          price0: u.price,
+          lastUpdate: new Date(u.timestamp).toISOString(),
+        })),
+      });
+    }
+
+    // Sort by spread (highest first) and return, fallback to HTTP if no WS data
+    return merged.length > 0 ? merged.sort((a, b) => b.spreadBps - a.spreadBps) : livePrices;
+  }, [wsConnected, wsPrices, livePrices]);
+
+  // Convert WebSocket opportunities to spreads format
+  const mergedSpreads = useMemo(() => {
+    if (!wsConnected || wsOpportunities.length === 0) {
+      return spreads;
+    }
+
+    // Map WS opportunities to spread format
+    const wsToSpreads: Spread[] = wsOpportunities.map(opp => ({
+      pair: opp.pair,
+      buyDex: opp.buyDex,
+      sellDex: opp.sellDex,
+      buyPrice: 0, // Not available in WS update
+      sellPrice: 0,
+      spreadBps: opp.spreadBps,
+      netProfitBps: opp.netProfitBps,
+      isProfitable: opp.netProfitBps > 0,
+      estimatedProfitUsd: opp.estimatedProfitUsd,
+    }));
+
+    // Merge with HTTP spreads, preferring newer WS data
+    const spreadMap = new Map<string, Spread>();
+    for (const s of spreads) {
+      spreadMap.set(`${s.pair}-${s.buyDex}-${s.sellDex}`, s);
+    }
+    for (const s of wsToSpreads) {
+      spreadMap.set(`${s.pair}-${s.buyDex}-${s.sellDex}`, s);
+    }
+
+    return Array.from(spreadMap.values()).sort((a, b) => b.spreadBps - a.spreadBps);
+  }, [wsConnected, wsOpportunities, spreads]);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -213,30 +305,71 @@ export default function Prices() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Chain Warning */}
+      {!chainConfig.supported && (
+        <Card className="p-4 bg-yellow-500/10 border-yellow-500/30">
+          <div className="flex items-center gap-3">
+            <Activity className="w-5 h-5 text-yellow-400" />
+            <div>
+              <p className="text-yellow-400 font-medium">
+                {chainConfig.name} not yet supported for live price monitoring
+              </p>
+              <p className="text-matrix-text-muted text-sm mt-1">
+                Currently showing BSC prices. Switch to BSC to see matching data, or prices will be added for {chainConfig.name} soon.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-matrix-text flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-matrix-primary" />
             Live Price Monitor
+            <Badge variant={chainConfig.supported ? 'success' : 'warning'}>
+              {chainConfig.supported ? chainConfig.name : `BSC (${chainConfig.name} coming)`}
+            </Badge>
           </h1>
           <p className="text-matrix-text-muted mt-1">
-            Real-time DEX prices and arbitrage opportunities on BSC
+            Real-time DEX prices and arbitrage opportunities
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* WebSocket Status Indicator */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-matrix-surface">
+            {wsConnected ? (
+              <>
+                <Wifi className="w-4 h-4 text-green-400" />
+                <span className="text-xs text-green-400">Live</span>
+                {latency && (
+                  <span className="text-xs text-matrix-text-muted ml-1">
+                    {latency.totalLatencyMs}ms
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-matrix-text-muted" />
+                <span className="text-xs text-matrix-text-muted">Polling</span>
+              </>
+            )}
+          </div>
           <label className="flex items-center gap-2 text-sm text-matrix-text-muted">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded border-matrix-border bg-matrix-bg"
+              disabled={wsConnected}
             />
-            Auto-refresh
+            {wsConnected ? 'WebSocket' : 'Auto-refresh'}
           </label>
           <button
             onClick={fetchAll}
             className="p-2 rounded-lg bg-matrix-surface hover:bg-matrix-surface-hover transition-colors"
+            title="Force refresh from API"
           >
             <RefreshCw className="w-5 h-5 text-matrix-text-muted" />
           </button>
@@ -376,7 +509,7 @@ export default function Prices() {
               </tr>
             </thead>
             <tbody>
-              {spreads.length === 0 ? (
+              {mergedSpreads.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-8 text-center text-matrix-text-muted">
                     {status?.running
@@ -385,7 +518,7 @@ export default function Prices() {
                   </td>
                 </tr>
               ) : (
-                spreads.slice(0, 20).map((spread, idx) => (
+                mergedSpreads.slice(0, 20).map((spread, idx) => (
                   <tr
                     key={`${spread.pair}-${idx}`}
                     className={clsx(
@@ -461,12 +594,12 @@ export default function Prices() {
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-          {livePrices.length === 0 ? (
+          {mergedLivePrices.length === 0 ? (
             <div className="col-span-full p-8 text-center text-matrix-text-muted">
               {status?.running ? 'Loading price data...' : 'Start monitoring to see prices'}
             </div>
           ) : (
-            livePrices.slice(0, 12).map((price) => (
+            mergedLivePrices.slice(0, 12).map((price) => (
               <div
                 key={price.pair}
                 className="p-4 bg-matrix-surface rounded-lg border border-matrix-border"

@@ -1,22 +1,31 @@
 # Dashboard TODO Items
 
-## Next Session Tasks
+## Completed Tasks (2026-01-02)
 
 ### 1. Smart Contract Viewer
-- [ ] Add smart contract viewer to dashboard
-- [ ] Include transaction history
-- [ ] Allow viewing contract interactions and events
+- [x] Add smart contract viewer to dashboard
+- [x] Include transaction history
+- [x] Allow viewing contract interactions and events
+- Added `/contracts` page with full ABI viewer, event logs, and transaction history
 
 ### 2. Wallet Page Performance
-- [ ] Investigate slow loading on Wallet page
-- [ ] Optimize data fetching
-- [ ] Add loading states/skeleton UI
+- [x] Investigate slow loading on Wallet page
+- [x] Optimize data fetching
+- [x] Add loading states/skeleton UI
+- Fixed: Backend now fetches balances in parallel instead of sequentially
+- Added combined `/api/wallets/all` endpoint
+- Added 30-second balance caching
+- Frontend uses O(1) Map lookups instead of O(n) array searches
 
 ### 3. Live Prices Page Issues
-- [ ] Prices not showing changes from one blockchain to another
-- [ ] Prices not updating in real-time on the dashboard
-- [ ] Connect WebSocket feed to dashboard UI
-- [ ] Ensure multi-chain price updates are reflected
+- [x] Prices not showing changes from one blockchain to another
+- [x] Prices not updating in real-time on the dashboard
+- [x] Connect WebSocket feed to dashboard UI
+- [x] Ensure multi-chain price updates are reflected
+- Added WebSocket integration for real-time price updates
+- Added WebSocket broadcast from PriceIngestionService
+- Added chain-awareness with warning for unsupported chains
+- Dashboard now shows Live/Polling status indicator
 
 ---
-*Last updated: 2026-01-01*
+*Last updated: 2026-01-02*

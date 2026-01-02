@@ -181,6 +181,88 @@ async function getWalletBalance(wallet: ManagedWallet): Promise<WalletBalance> {
 const router = Router();
 
 /**
+ * GET /api/wallets/all
+ * Get all wallet data in a single optimized call (wallets + balances + summary)
+ */
+router.get('/all', async (req: Request, res: Response) => {
+  try {
+    const wallets = db.prepare('SELECT * FROM wallets WHERE is_active = 1 ORDER BY created_at DESC').all().map(rowToWallet);
+    const now = Date.now();
+    const maxAge = 30000;
+
+    // Try cached balances first
+    const balances: WalletBalance[] = [];
+    const staleWallets: ManagedWallet[] = [];
+
+    for (const wallet of wallets) {
+      const cached = db.prepare(
+        'SELECT balance_wei, updated_at FROM wallet_balances WHERE wallet_id = ?'
+      ).get(wallet.id) as { balance_wei: string; updated_at: number } | undefined;
+
+      if (cached && (now - cached.updated_at) < maxAge) {
+        const config = CHAIN_CONFIG[wallet.chain];
+        const threshold = LOW_BALANCE_THRESHOLDS[wallet.chain] || BigInt(0);
+        balances.push({
+          walletId: wallet.id,
+          address: wallet.address,
+          chain: wallet.chain,
+          balanceWei: cached.balance_wei,
+          balanceFormatted: ethers.formatEther(BigInt(cached.balance_wei)),
+          symbol: config?.symbol || 'ETH',
+          updatedAt: cached.updated_at,
+          isLow: BigInt(cached.balance_wei) < threshold,
+        });
+      } else {
+        staleWallets.push(wallet);
+      }
+    }
+
+    // Fetch stale balances in parallel (background, don't wait)
+    if (staleWallets.length > 0) {
+      Promise.allSettled(staleWallets.map((w) => getWalletBalance(w).catch(() => null)));
+    }
+
+    // Calculate summary from cached data
+    const chainCounts = db.prepare(
+      'SELECT chain, COUNT(*) as count FROM wallets WHERE is_active = 1 GROUP BY chain'
+    ).all() as { chain: number; count: number }[];
+
+    const roleCounts = db.prepare(
+      'SELECT role, COUNT(*) as count FROM wallets WHERE is_active = 1 GROUP BY role'
+    ).all() as { role: string; count: number }[];
+
+    const byChain: Record<number, number> = {};
+    chainCounts.forEach((c) => { byChain[c.chain] = c.count; });
+
+    const byRole: Record<string, number> = {};
+    roleCounts.forEach((r) => { byRole[r.role] = r.count; });
+
+    const lowBalanceCount = balances.filter((b) => b.isLow).length;
+
+    res.json({
+      success: true,
+      data: {
+        wallets,
+        balances,
+        summary: {
+          totalWallets: wallets.length,
+          byChain,
+          byRole,
+          lowBalanceCount,
+          totalValueUsd: 0,
+        },
+      },
+      staleCount: staleWallets.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
  * GET /api/wallets
  * List all managed wallets
  */
@@ -277,21 +359,70 @@ router.get('/summary', async (req: Request, res: Response) => {
 
 /**
  * GET /api/wallets/balances
- * Get all wallet balances
+ * Get all wallet balances - optimized with parallel fetching and caching
  */
 router.get('/balances', async (req: Request, res: Response) => {
   try {
     const wallets = db.prepare('SELECT * FROM wallets WHERE is_active = 1').all().map(rowToWallet);
-    const balances: WalletBalance[] = [];
+    const useCached = req.query.cached !== 'false';
+    const maxAge = 30000; // 30 second cache
+    const now = Date.now();
 
-    for (const wallet of wallets) {
-      try {
-        const balance = await getWalletBalance(wallet);
-        balances.push(balance);
-      } catch (error) {
-        console.error(`Error fetching balance for ${wallet.address}:`, error);
+    // Check for fresh cached balances first
+    if (useCached) {
+      const cachedBalances: WalletBalance[] = [];
+      let allCached = true;
+
+      for (const wallet of wallets) {
+        const cached = db.prepare(
+          'SELECT balance_wei, updated_at FROM wallet_balances WHERE wallet_id = ?'
+        ).get(wallet.id) as { balance_wei: string; updated_at: number } | undefined;
+
+        if (cached && (now - cached.updated_at) < maxAge) {
+          const config = CHAIN_CONFIG[wallet.chain];
+          const threshold = LOW_BALANCE_THRESHOLDS[wallet.chain] || BigInt(0);
+          cachedBalances.push({
+            walletId: wallet.id,
+            address: wallet.address,
+            chain: wallet.chain,
+            balanceWei: cached.balance_wei,
+            balanceFormatted: ethers.formatEther(BigInt(cached.balance_wei)),
+            symbol: config?.symbol || 'ETH',
+            updatedAt: cached.updated_at,
+            isLow: BigInt(cached.balance_wei) < threshold,
+          });
+        } else {
+          allCached = false;
+          break;
+        }
+      }
+
+      if (allCached && cachedBalances.length === wallets.length) {
+        const lowBalanceCount = cachedBalances.filter((b) => b.isLow).length;
+        return res.json({
+          success: true,
+          data: cachedBalances,
+          count: cachedBalances.length,
+          lowBalanceCount,
+          cached: true,
+        });
       }
     }
+
+    // Fetch balances in parallel for performance
+    const balancePromises = wallets.map(async (wallet) => {
+      try {
+        return await getWalletBalance(wallet);
+      } catch (error) {
+        console.error(`Error fetching balance for ${wallet.address}:`, error);
+        return null;
+      }
+    });
+
+    const results = await Promise.allSettled(balancePromises);
+    const balances: WalletBalance[] = results
+      .filter((r): r is PromiseFulfilledResult<WalletBalance | null> => r.status === 'fulfilled' && r.value !== null)
+      .map((r) => r.value!);
 
     const lowBalanceCount = balances.filter((b) => b.isLow).length;
 
@@ -300,6 +431,7 @@ router.get('/balances', async (req: Request, res: Response) => {
       data: balances,
       count: balances.length,
       lowBalanceCount,
+      cached: false,
     });
   } catch (error) {
     res.status(500).json({
