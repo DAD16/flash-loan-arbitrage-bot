@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(winget:*)",
+      "Bash(forge:*)",
+      "Bash(where:*)",
+      "Bash(curl:*)",
+      "Bash(bash)",
+      "Bash(source:*)",
+      "Bash(cargo:*)",
+      "Bash(rustup:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(pnpm:*)",
+      "Bash(pip:*)",
+      "Bash(ruff:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(cmake:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(mkdir:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(wmic:*)",
+      "Bash(xargs:*)",
+      "WebFetch(domain:eigenphi.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.bnbchain.org)",
+      "WebFetch(domain:faucets.chain.link)"
+    ]
+  }
+}

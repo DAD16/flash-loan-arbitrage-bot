@@ -1,0 +1,3 @@
+# Task files are runtime data - don't commit
+*.json
+!.gitignore

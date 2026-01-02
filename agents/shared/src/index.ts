@@ -6,3 +6,4 @@ export * from './types.js';
 export * from './chains.js';
 export * from './logger.js';
 export * from './config.js';
+export * from './taskQueue.js';
