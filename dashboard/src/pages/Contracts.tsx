@@ -58,15 +58,23 @@ interface ContractEventLog {
   logIndex: number;
 }
 
-interface ContractTransaction {
-  hash: string;
-  from: string;
-  to: string;
-  value: string;
-  blockNumber: number;
-  timestamp: number;
-  gasPrice: string;
-  data: string;
+interface BotExecution {
+  id: string;
+  tx_hash: string | null;
+  chain: string;
+  status: string;
+  route_token_symbols: string | null;
+  route_dexes: string | null;
+  expected_profit_wei: string | null;
+  actual_profit_wei: string | null;
+  net_profit_wei: string | null;
+  gas_used: number | null;
+  gas_cost_wei: string | null;
+  submitted_at: string | null;
+  confirmed_at: string | null;
+  execution_time_ms: number | null;
+  was_frontrun: number;
+  error_message: string | null;
 }
 
 const CHAIN_NAMES: Record<string, string> = {
@@ -83,10 +91,10 @@ export default function Contracts() {
   const [contracts, setContracts] = useState<ContractDeployment[]>([]);
   const [selectedContract, setSelectedContract] = useState<ContractDetails | null>(null);
   const [events, setEvents] = useState<ContractEventLog[]>([]);
-  const [transactions, setTransactions] = useState<ContractTransaction[]>([]);
+  const [executions, setExecutions] = useState<BotExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'functions' | 'events' | 'transactions' | 'config'>('functions');
+  const [activeTab, setActiveTab] = useState<'functions' | 'events' | 'history' | 'config'>('functions');
   const [expandedFunctions, setExpandedFunctions] = useState<Set<string>>(new Set());
 
   const fetchContracts = useCallback(async () => {
@@ -108,9 +116,9 @@ export default function Contracts() {
       const data = await response.json();
       if (data.success) {
         setSelectedContract(data.data);
-        // Also fetch events and transactions
+        // Also fetch events and execution history
         fetchEvents(address, chainId);
-        fetchTransactions(address, chainId);
+        fetchExecutions(address);
       }
     } catch (error) {
       console.error('Error fetching contract details:', error);
@@ -129,15 +137,15 @@ export default function Contracts() {
     }
   };
 
-  const fetchTransactions = async (address: string, chainId: number) => {
+  const fetchExecutions = async (address: string) => {
     try {
-      const response = await fetch(`${API_BASE}/api/contracts/${address}/transactions?chainId=${chainId}&blocks=200`);
+      const response = await fetch(`${API_BASE}/api/contracts/${address}/executions?limit=20`);
       const data = await response.json();
       if (data.success) {
-        setTransactions(data.data || []);
+        setExecutions(data.data || []);
       }
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('Error fetching executions:', error);
     }
   };
 
@@ -309,7 +317,7 @@ export default function Contracts() {
 
                 {/* Tabs */}
                 <div className="flex gap-2 mt-4">
-                  {(['functions', 'events', 'transactions', 'config'] as const).map((tab) => (
+                  {(['functions', 'events', 'history', 'config'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
@@ -322,7 +330,7 @@ export default function Contracts() {
                     >
                       {tab === 'functions' && <Code2 className="w-4 h-4 inline mr-1" />}
                       {tab === 'events' && <Zap className="w-4 h-4 inline mr-1" />}
-                      {tab === 'transactions' && <Activity className="w-4 h-4 inline mr-1" />}
+                      {tab === 'history' && <Activity className="w-4 h-4 inline mr-1" />}
                       {tab}
                     </button>
                   ))}
@@ -445,48 +453,59 @@ export default function Contracts() {
                   </div>
                 )}
 
-                {/* Transactions Tab */}
-                {activeTab === 'transactions' && (
+                {/* Execution History Tab */}
+                {activeTab === 'history' && (
                   <div className="space-y-2">
-                    {transactions.length === 0 ? (
-                      <p className="text-matrix-text-muted text-center py-4">No recent transactions</p>
+                    {executions.length === 0 ? (
+                      <p className="text-matrix-text-muted text-center py-4">No execution history yet</p>
                     ) : (
-                      transactions.map((tx) => (
-                        <div key={tx.hash} className="p-3 bg-matrix-bg rounded-lg">
+                      executions.map((exec) => (
+                        <div key={exec.id} className="p-3 bg-matrix-bg rounded-lg">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Activity className="w-4 h-4 text-matrix-primary" />
+                              <Activity className={clsx(
+                                'w-4 h-4',
+                                exec.status === 'confirmed' ? 'text-green-400' :
+                                exec.status === 'failed' ? 'text-red-400' : 'text-yellow-400'
+                              )} />
                               <span className="font-mono text-sm text-matrix-text">
-                                {tx.hash.slice(0, 16)}...
+                                {exec.tx_hash ? `${exec.tx_hash.slice(0, 16)}...` : exec.id.slice(0, 12)}
                               </span>
                             </div>
-                            <Badge variant="default">Block #{tx.blockNumber}</Badge>
+                            <Badge variant={
+                              exec.status === 'confirmed' ? 'success' :
+                              exec.status === 'failed' ? 'danger' : 'warning'
+                            }>
+                              {exec.status}
+                            </Badge>
                           </div>
                           <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                             <div>
-                              <span className="text-matrix-text-muted">From: </span>
-                              <span className="font-mono text-matrix-text">
-                                {tx.from.slice(0, 8)}...{tx.from.slice(-6)}
+                              <span className="text-matrix-text-muted">Route: </span>
+                              <span className="text-matrix-text">
+                                {exec.route_token_symbols || 'N/A'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-matrix-text-muted">Value: </span>
-                              <span className="text-matrix-text">
-                                {(Number(tx.value) / 1e18).toFixed(4)} ETH
+                              <span className="text-matrix-text-muted">Net Profit: </span>
+                              <span className={exec.net_profit_wei && BigInt(exec.net_profit_wei) > 0 ? 'text-green-400' : 'text-red-400'}>
+                                {exec.net_profit_wei ? (Number(exec.net_profit_wei) / 1e18).toFixed(6) : '0'} ETH
                               </span>
                             </div>
                           </div>
-                          {tx.data && tx.data !== '0x' && (
-                            <div className="mt-2">
-                              <span className="text-xs text-matrix-text-muted">Data: </span>
-                              <span className="font-mono text-xs text-matrix-text-muted">
-                                {tx.data}
-                              </span>
-                            </div>
+                          {exec.was_frontrun === 1 && (
+                            <div className="mt-2 text-xs text-red-400">Frontrun detected</div>
+                          )}
+                          {exec.error_message && (
+                            <div className="mt-2 text-xs text-red-400">{exec.error_message}</div>
                           )}
                           <div className="mt-2 flex items-center gap-1 text-xs text-matrix-text-muted">
                             <Clock className="w-3 h-3" />
-                            {new Date(tx.timestamp * 1000).toLocaleString()}
+                            {exec.confirmed_at ? new Date(exec.confirmed_at).toLocaleString() :
+                             exec.submitted_at ? new Date(exec.submitted_at).toLocaleString() : 'Pending'}
+                            {exec.execution_time_ms && (
+                              <span className="ml-2">({exec.execution_time_ms}ms)</span>
+                            )}
                           </div>
                         </div>
                       ))

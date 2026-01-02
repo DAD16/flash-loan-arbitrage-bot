@@ -267,58 +267,48 @@ router.get('/:address/events', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/contracts/:address/transactions
- * Get recent transactions involving the contract
- * Note: This requires block scanning as standard RPC doesn't index by address
+ * GET /api/contracts/:address/executions
+ * Get our bot's execution history for this contract
  */
-router.get('/:address/transactions', async (req: Request, res: Response) => {
+router.get('/:address/executions', async (req: Request, res: Response) => {
   try {
     const { address } = req.params;
-    const chainId = parseInt(req.query.chainId as string) || 11155111;
-    const blocks = Math.min(parseInt(req.query.blocks as string) || 100, 500);
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
 
-    const provider = getProvider(chainId);
-    const currentBlock = await provider.getBlockNumber();
-
-    // Scan recent blocks for transactions to this contract
-    const transactions: any[] = [];
-    const startBlock = Math.max(0, currentBlock - blocks);
-
-    // Batch block fetches
-    const blockPromises = [];
-    for (let i = currentBlock; i >= startBlock && blockPromises.length < 20; i--) {
-      blockPromises.push(provider.getBlock(i, true));
+    // Load executions from our database
+    const dbPath = join(__dirname, '../../db/matrix.db');
+    if (!existsSync(dbPath)) {
+      return res.json({
+        success: true,
+        data: [],
+        count: 0,
+        message: 'No execution database found',
+      });
     }
 
-    const blockResults = await Promise.allSettled(blockPromises);
+    const Database = (await import('better-sqlite3')).default;
+    const db = new Database(dbPath);
 
-    for (const result of blockResults) {
-      if (result.status === 'fulfilled' && result.value) {
-        const block = result.value;
-        for (const tx of block.transactions || []) {
-          if (typeof tx !== 'string') {
-            if (tx.to?.toLowerCase() === address.toLowerCase()) {
-              transactions.push({
-                hash: tx.hash,
-                from: tx.from,
-                to: tx.to,
-                value: tx.value.toString(),
-                blockNumber: block.number,
-                timestamp: block.timestamp,
-                gasPrice: tx.gasPrice?.toString(),
-                data: tx.data?.slice(0, 74) + (tx.data && tx.data.length > 74 ? '...' : ''),
-              });
-            }
-          }
-        }
-      }
-    }
+    // Get recent executions (our bot's history)
+    const executions = db.prepare(`
+      SELECT
+        id, tx_hash, chain, status,
+        route_token_symbols, route_dexes,
+        expected_profit_wei, actual_profit_wei, net_profit_wei,
+        gas_used, gas_cost_wei,
+        submitted_at, confirmed_at, execution_time_ms,
+        was_frontrun, error_message
+      FROM executions
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(limit);
+
+    db.close();
 
     res.json({
       success: true,
-      data: transactions.slice(0, 50),
-      count: transactions.length,
-      blocksScanned: blocks,
+      data: executions,
+      count: executions.length,
     });
   } catch (error) {
     res.status(500).json({
