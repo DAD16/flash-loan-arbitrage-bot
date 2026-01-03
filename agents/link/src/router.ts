@@ -2,7 +2,7 @@
  * LINK - Message Router
  */
 
-import { AgentLogger } from '@matrix/shared';
+import { AgentLogger, AgentBase, AgentStartupResult, AgentTask } from '@matrix/shared';
 import { KafkaConnector } from './kafka.js';
 import type {
   RouterConfig,
@@ -11,7 +11,7 @@ import type {
   TopicSubscription,
 } from './types.js';
 
-export class Link {
+export class Link extends AgentBase {
   private logger: AgentLogger;
   private config: RouterConfig;
   private kafka: KafkaConnector | null = null;

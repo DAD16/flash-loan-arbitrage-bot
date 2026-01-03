@@ -1,5 +1,24 @@
 {
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/validate-command.js"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
+    "deny": [
+      "Bash(taskkill /F /IM*)",
+      "Bash(taskkill /IM*)",
+      "Bash(Stop-Process*)",
+      "Bash(powershell*Stop-Process*)"
+    ],
     "allow": [
       "WebSearch",
       "Bash(git:*)",
@@ -30,13 +49,61 @@
       "Bash(ls:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill:*)",
-      "Bash(wmic:*)",
       "Bash(xargs:*)",
+
       "WebFetch(domain:eigenphi.io)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:www.bnbchain.org)",
-      "WebFetch(domain:faucets.chain.link)"
+      "WebFetch(domain:faucets.chain.link)",
+
+      "WebFetch(domain:docs.uniswap.org)",
+      "WebFetch(domain:docs.aave.com)",
+      "WebFetch(domain:docs.pancakeswap.finance)",
+      "WebFetch(domain:docs.chain.link)",
+      "WebFetch(domain:ethereum.org)",
+      "WebFetch(domain:docs.ethers.org)",
+      "WebFetch(domain:viem.sh)",
+      "WebFetch(domain:book.getfoundry.sh)",
+      "WebFetch(domain:docs.soliditylang.org)",
+      "WebFetch(domain:eips.ethereum.org)",
+
+      "WebFetch(domain:arbiscan.io)",
+      "WebFetch(domain:etherscan.io)",
+      "WebFetch(domain:bscscan.com)",
+      "WebFetch(domain:basescan.org)",
+      "WebFetch(domain:optimistic.etherscan.io)",
+
+      "WebFetch(domain:defillama.com)",
+      "WebFetch(domain:dune.com)",
+      "WebFetch(domain:coingecko.com)",
+      "WebFetch(domain:coinmarketcap.com)",
+      "WebFetch(domain:dexscreener.com)",
+      "WebFetch(domain:dextools.io)",
+
+      "WebFetch(domain:flashbots.net)",
+      "WebFetch(domain:docs.flashbots.net)",
+      "WebFetch(domain:mevblocker.io)",
+      "WebFetch(domain:zeromev.org)",
+      "WebFetch(domain:libmev.com)",
+      "WebFetch(domain:mevboost.org)",
+
+      "WebFetch(domain:alchemy.com)",
+      "WebFetch(domain:docs.alchemy.com)",
+      "WebFetch(domain:infura.io)",
+      "WebFetch(domain:quicknode.com)",
+      "WebFetch(domain:chainstack.com)",
+
+      "WebFetch(domain:npmjs.com)",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:mirror.xyz)",
+      "WebFetch(domain:hackmd.io)",
+
+      "WebFetch(domain:docs.openzeppelin.com)",
+      "WebFetch(domain:docs.safe.global)",
+      "WebFetch(domain:docs.gnosis-safe.io)"
     ]
   }
 }

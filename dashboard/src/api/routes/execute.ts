@@ -1,5 +1,10 @@
 /**
  * Execution Routes - Real blockchain execution
+ *
+ * MEV Protection:
+ * - Ethereum mainnet: Uses Flashbots Protect
+ * - Sepolia testnet: Uses Flashbots Sepolia RPC
+ * - BSC: Direct RPC (no private mempool available)
  */
 
 import { Router, Request, Response } from 'express';
@@ -11,12 +16,16 @@ import {
   type Chain,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { sepolia, bsc } from 'viem/chains';
+import { sepolia, bsc, mainnet } from 'viem/chains';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// MEV Protection - Flashbots RPCs
+const FLASHBOTS_MAINNET_RPC = 'https://rpc.flashbots.net/fast';
+const FLASHBOTS_SEPOLIA_RPC = 'https://rpc-sepolia.flashbots.net/';
 const router = Router();
 
 // Load environment
@@ -98,15 +107,27 @@ router.get('/status', async (req: Request, res: Response) => {
 
   let chainObj: Chain;
   let rpcUrl: string;
+  let mevProtected = false;
+  let writeRpcName = 'Public RPC';
 
   switch (chain) {
     case 'sepolia':
       chainObj = sepolia;
       rpcUrl = env.SEPOLIA_RPC_URL;
+      mevProtected = true;
+      writeRpcName = 'Flashbots Sepolia';
       break;
     case 'bsc':
       chainObj = bsc;
       rpcUrl = env.BSC_RPC_URL;
+      mevProtected = false;
+      writeRpcName = 'BSC Public RPC';
+      break;
+    case 'ethereum':
+      chainObj = mainnet;
+      rpcUrl = env.ETH_RPC_URL;
+      mevProtected = true;
+      writeRpcName = 'Flashbots Protect';
       break;
     default:
       return res.json({
@@ -169,6 +190,14 @@ router.get('/status', async (req: Request, res: Response) => {
       minProfitBps: Number(minProfitBps),
       balance: balance.toString(),
       balanceFormatted: (Number(balance) / 1e18).toFixed(4),
+      // MEV Protection info
+      mevProtection: {
+        enabled: mevProtected,
+        writeRpc: writeRpcName,
+        description: mevProtected
+          ? 'Transactions routed through private mempool (front-running protected)'
+          : 'Direct RPC - use contract obfuscation for protection',
+      },
     });
   } catch (error) {
     res.json({
@@ -179,6 +208,7 @@ router.get('/status', async (req: Request, res: Response) => {
 });
 
 // POST /api/execute/test - Send a test transaction (0 ETH to self)
+// Uses Flashbots Protect for Ethereum/Sepolia, direct RPC for BSC
 router.post('/test', async (req: Request, res: Response) => {
   const { chain = 'sepolia' } = req.body;
   const env = loadEnv();
@@ -189,22 +219,42 @@ router.post('/test', async (req: Request, res: Response) => {
   }
 
   let chainObj: Chain;
-  let rpcUrl: string;
+  let readRpcUrl: string;
+  let writeRpcUrl: string;
+  let mevProtected = false;
+  let rpcName = 'Public RPC';
+  let explorerBaseUrl: string;
 
   switch (chain) {
     case 'sepolia':
       chainObj = sepolia;
-      rpcUrl = env.SEPOLIA_RPC_URL;
+      readRpcUrl = env.SEPOLIA_RPC_URL;
+      writeRpcUrl = FLASHBOTS_SEPOLIA_RPC;
+      mevProtected = true;
+      rpcName = 'Flashbots Sepolia';
+      explorerBaseUrl = 'https://sepolia.etherscan.io/tx/';
       break;
     case 'bsc':
       chainObj = bsc;
-      rpcUrl = env.BSC_RPC_URL;
+      readRpcUrl = env.BSC_RPC_URL;
+      writeRpcUrl = env.BSC_RPC_URL;
+      mevProtected = false;
+      rpcName = 'BSC Public RPC';
+      explorerBaseUrl = 'https://bscscan.com/tx/';
+      break;
+    case 'ethereum':
+      chainObj = mainnet;
+      readRpcUrl = env.ETH_RPC_URL;
+      writeRpcUrl = FLASHBOTS_MAINNET_RPC;
+      mevProtected = true;
+      rpcName = 'Flashbots Protect';
+      explorerBaseUrl = 'https://etherscan.io/tx/';
       break;
     default:
       return res.status(400).json({ error: `Unsupported chain: ${chain}` });
   }
 
-  if (!rpcUrl) {
+  if (!readRpcUrl) {
     return res.status(400).json({ error: `RPC URL not configured for ${chain}` });
   }
 
@@ -212,18 +262,21 @@ router.post('/test', async (req: Request, res: Response) => {
     const pk = (privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`) as `0x${string}`;
     const account = privateKeyToAccount(pk);
 
+    // Read client for confirmations
     const publicClient = createPublicClient({
       chain: chainObj,
-      transport: http(rpcUrl),
+      transport: http(readRpcUrl),
     });
 
+    // Write client with MEV protection when available
     const walletClient = createWalletClient({
       account,
       chain: chainObj,
-      transport: http(rpcUrl),
+      transport: http(writeRpcUrl),
     });
 
-    console.log(`[Execute] Sending test transaction on ${chain}...`);
+    console.log(`[Execute] Sending test transaction on ${chain} via ${rpcName}...`);
+    console.log(`[Execute] MEV Protected: ${mevProtected}`);
 
     // Send 0 ETH to self
     const txHash = await walletClient.sendTransaction({
@@ -247,15 +300,17 @@ router.post('/test', async (req: Request, res: Response) => {
       blockNumber: receipt.blockNumber.toString(),
       gasUsed: receipt.gasUsed.toString(),
       chain,
-      explorer: chain === 'sepolia'
-        ? `https://sepolia.etherscan.io/tx/${txHash}`
-        : `https://bscscan.com/tx/${txHash}`,
+      explorer: `${explorerBaseUrl}${txHash}`,
+      mevProtected,
+      rpcUsed: rpcName,
     });
   } catch (error) {
     console.error('[Execute] Error:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
+      mevProtected,
+      rpcUsed: rpcName,
     });
   }
 });

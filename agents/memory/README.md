@@ -2,6 +2,66 @@
 
 This directory contains persistent memory files for all Matrix agents. Each agent maintains its own memory file that persists across sessions.
 
+## Task Persistence (Crash Recovery)
+
+**IMPORTANT:** All agents now use the TaskQueue system for crash-safe task logging.
+
+### How It Works
+
+1. **On Task Receive**: When an agent receives a task, it's saved IMMEDIATELY to disk via `receiveTask()` before any work begins
+2. **On Crash Recovery**: When an agent restarts, call `initialize()` to recover incomplete tasks
+3. **Task Files**: Stored in `agents/tasks/` as JSON files
+
+### Agent Workflow
+
+```typescript
+// 1. Create agent and initialize (recovers any crashed tasks)
+const mouse = new Mouse();
+const startup = await mouse.initialize();
+
+if (startup.currentTask) {
+  console.log(`Resuming: ${startup.currentTask.taskDescription}`);
+}
+
+// 2. Start a new task (saved immediately)
+const task = await mouse.startResearch('Research eigenphi.io dashboard');
+
+// 3. Do the work...
+
+// 4. Complete the task
+await mouse.finishResearch('Research completed with findings...');
+
+// Check current task at any time
+const currentWork = await mouse.whatAmIWorkingOn();
+```
+
+### Task CLI
+
+Manage tasks via command line:
+
+```bash
+# List all tasks for an agent
+npx tsx agents/shared/src/taskCli.ts list MOUSE
+
+# Show pending/incomplete tasks
+npx tsx agents/shared/src/taskCli.ts pending MOUSE
+
+# Recover crashed tasks (marks in_progress as crashed)
+npx tsx agents/shared/src/taskCli.ts recover MOUSE
+
+# Get last incomplete task
+npx tsx agents/shared/src/taskCli.ts last MOUSE
+```
+
+### Task vs Memory
+
+- **TaskQueue** (`agents/tasks/`): Current/pending work - use for crash recovery
+- **Memory** (`agents/memory/`): Historical context and knowledge - NOT for current tasks
+
+When an agent crashes and restarts:
+- Read from TaskQueue to find what you were working on
+- Do NOT rely on memory's `currentFocus` for current task
+
 ## Memory Structure
 
 Each agent's memory follows this schema:

@@ -13,8 +13,12 @@ router.get('/', (req: Request, res: Response) => {
   try {
     const { chain = 'bsc', status, confidence, limit = 100, offset = 0 } = req.query;
 
-    let sql = 'SELECT * FROM opportunities WHERE chain = ?';
-    const params: (string | number)[] = [chain as string];
+    // Use ISO format timestamp for comparison (matches database format)
+    const nowISO = new Date().toISOString();
+
+    // Filter out expired opportunities by default
+    let sql = `SELECT * FROM opportunities WHERE chain = ? AND (valid_until IS NULL OR valid_until > ?)`;
+    const params: (string | number)[] = [chain as string, nowISO];
 
     if (status) {
       sql += ' AND status = ?';
@@ -42,8 +46,8 @@ router.get('/', (req: Request, res: Response) => {
     }));
 
     const { count } = db.prepare(
-      'SELECT COUNT(*) as count FROM opportunities WHERE chain = ?'
-    ).get(chain as string) as { count: number };
+      `SELECT COUNT(*) as count FROM opportunities WHERE chain = ? AND (valid_until IS NULL OR valid_until > ?)`
+    ).get(chain as string, nowISO) as { count: number };
 
     res.json({
       data: parsed,
@@ -60,13 +64,16 @@ router.get('/pending', (req: Request, res: Response) => {
   try {
     const { chain = 'bsc', min_profit_wei } = req.query;
 
+    // Use ISO format timestamp for comparison (matches database format)
+    const nowISO = new Date().toISOString();
+
     let sql = `
       SELECT * FROM opportunities
       WHERE chain = ?
       AND status IN ('detected', 'evaluating')
-      AND (valid_until IS NULL OR valid_until > datetime('now'))
+      AND (valid_until IS NULL OR valid_until > ?)
     `;
-    const params: (string | number)[] = [chain as string];
+    const params: (string | number)[] = [chain as string, nowISO];
 
     if (min_profit_wei) {
       sql += ' AND CAST(expected_net_profit_wei AS INTEGER) >= ?';

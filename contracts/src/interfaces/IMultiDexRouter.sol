@@ -15,7 +15,15 @@ interface IMultiDexRouter {
         PancakeSwap,
         Camelot,
         Velodrome,
-        Aerodrome
+        Aerodrome,
+        // BSC DEXs
+        Biswap,
+        ApeSwap,
+        MDEX,
+        // Base DEXs
+        BaseSwap,
+        Alienbase,
+        SwapBased
     }
 
     /// @notice Swap parameters for a single DEX

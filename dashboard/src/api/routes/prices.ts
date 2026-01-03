@@ -1,36 +1,68 @@
 /**
  * Price Monitoring API Routes
  * Endpoints for live price data and arbitrage opportunity detection
+ * Supports multiple chains: BSC, Ethereum, Arbitrum, Base
  */
 
 import { Router, Request, Response } from 'express';
-import PriceIngestionService from '../../services/priceIngestion.js';
+import PriceIngestionService, { type SupportedChain } from '../../services/priceIngestion.js';
 import db from '../db.js';
 
 const router = Router();
 
-// Global price service instance
-let priceService: PriceIngestionService | null = null;
+// Price services per chain
+const priceServices: Map<SupportedChain, PriceIngestionService> = new Map();
 
-// GET /api/prices/status - Get price monitoring status
+// Helper to get price service for a chain
+function getPriceService(chain: SupportedChain): PriceIngestionService | null {
+  return priceServices.get(chain) || null;
+}
+
+// Helper to get all running services
+function getAllPriceServices(): PriceIngestionService[] {
+  return Array.from(priceServices.values());
+}
+
+// GET /api/prices/status - Get price monitoring status (supports ?chain=bsc|ethereum|arbitrum|base)
 router.get('/status', (req: Request, res: Response) => {
+  const chain = (req.query.chain as SupportedChain) || 'bsc';
+  const priceService = getPriceService(chain);
+
   if (!priceService) {
-    return res.json({
-      data: {
-        running: false,
-        pairsMonitored: 0,
-        priceUpdates: 0,
-        opportunitiesDetected: 0,
-        lastUpdate: null,
-        message: 'Price monitoring not started'
-      }
-    });
+    // Return aggregate status if no specific chain
+    const allServices = getAllPriceServices();
+    if (allServices.length === 0) {
+      return res.json({
+        data: {
+          running: false,
+          chain: null,
+          pairsMonitored: 0,
+          priceUpdates: 0,
+          opportunitiesDetected: 0,
+          lastUpdate: null,
+          message: 'No price monitoring services running',
+          activeChains: []
+        }
+      });
+    }
+
+    // Aggregate stats from all running services
+    const aggregateStats = {
+      running: true,
+      activeChains: allServices.map(s => s.getChain()),
+      pairsMonitored: allServices.reduce((sum, s) => sum + s.getStats().pairsMonitored, 0),
+      priceUpdates: allServices.reduce((sum, s) => sum + s.getStats().priceUpdates, 0),
+      opportunitiesDetected: allServices.reduce((sum, s) => sum + s.getStats().opportunitiesDetected, 0),
+      lastUpdate: new Date(Math.max(...allServices.map(s => s.getStats().lastUpdate?.getTime() || 0))).toISOString(),
+    };
+    return res.json({ data: aggregateStats });
   }
 
   const stats = priceService.getStats();
   res.json({
     data: {
       running: stats.isRunning,
+      chain: priceService.getChain(),
       pairsMonitored: stats.pairsMonitored,
       priceUpdates: stats.priceUpdates,
       opportunitiesDetected: stats.opportunitiesDetected,
@@ -41,13 +73,17 @@ router.get('/status', (req: Request, res: Response) => {
   });
 });
 
-// GET /api/prices/live - Get current live prices
+// GET /api/prices/live - Get current live prices (supports ?chain=bsc|ethereum|arbitrum|base)
 router.get('/live', (req: Request, res: Response) => {
+  const chain = (req.query.chain as SupportedChain) || 'bsc';
+  const priceService = getPriceService(chain);
+
   if (!priceService) {
     return res.json({
       data: {
         prices: [],
-        message: 'Price monitoring not started'
+        chain,
+        message: `Price monitoring not started for ${chain.toUpperCase()}`
       }
     });
   }
@@ -139,12 +175,16 @@ router.get('/opportunities', (req: Request, res: Response) => {
   }
 });
 
-// GET /api/prices/spreads - Get current spreads across DEXs
+// GET /api/prices/spreads - Get current spreads across DEXs (supports ?chain=bsc|ethereum|arbitrum|base)
 router.get('/spreads', (req: Request, res: Response) => {
+  const chain = (req.query.chain as SupportedChain) || 'bsc';
+  const priceService = getPriceService(chain);
+
   if (!priceService) {
     return res.json({
       data: [],
-      message: 'Price monitoring not started'
+      chain,
+      message: `Price monitoring not started for ${chain.toUpperCase()}`
     });
   }
 
@@ -210,31 +250,45 @@ router.get('/spreads', (req: Request, res: Response) => {
   });
 });
 
-// POST /api/prices/start - Start price monitoring
+// POST /api/prices/start - Start price monitoring for a chain
 router.post('/start', async (req: Request, res: Response) => {
   try {
-    const { pollIntervalMs = 2000, minSpreadBps = 5 } = req.body;
+    const {
+      chain = 'bsc',
+      pollIntervalMs = 2000,
+      minSpreadBps = 5,
+      useMMBF = false,
+      useWebSocket = true  // Default to WebSocket mode for real-time
+    } = req.body;
+    const targetChain = chain as SupportedChain;
 
-    if (priceService) {
-      const stats = priceService.getStats();
+    // Check if already running for this chain
+    const existing = priceServices.get(targetChain);
+    if (existing) {
+      const stats = existing.getStats();
       if (stats.isRunning) {
-        return res.status(400).json({ error: 'Price monitoring already running' });
+        return res.status(400).json({ error: `Price monitoring already running for ${targetChain.toUpperCase()}` });
       }
     }
 
-    const rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-mainnet.core.chainstack.com/acba35ed74b7bbddda5fdbc98656b7e3';
-
-    priceService = new PriceIngestionService({
-      rpcUrl,
+    const priceService = new PriceIngestionService({
+      chain: targetChain,
       pollIntervalMs: Number(pollIntervalMs),
       minSpreadBps: Number(minSpreadBps),
+      useMMBF: Boolean(useMMBF),  // Enable MMBF multi-hop detection
+      useWebSocket: Boolean(useWebSocket),  // Enable real-time WebSocket subscriptions
     });
 
     await priceService.start();
+    priceServices.set(targetChain, priceService);
 
     res.json({
       data: {
-        message: 'Price monitoring started',
+        message: `Price monitoring started for ${targetChain.toUpperCase()}`,
+        chain: targetChain,
+        useMMBF: Boolean(useMMBF),
+        useWebSocket: Boolean(useWebSocket),
+        mode: Boolean(useWebSocket) ? 'realtime' : 'polling',
         ...priceService.getStats()
       }
     });
@@ -244,18 +298,24 @@ router.post('/start', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/prices/stop - Stop price monitoring
+// POST /api/prices/stop - Stop price monitoring for a chain
 router.post('/stop', (req: Request, res: Response) => {
+  const { chain = 'bsc' } = req.body;
+  const targetChain = chain as SupportedChain;
+  const priceService = priceServices.get(targetChain);
+
   if (!priceService) {
-    return res.status(400).json({ error: 'Price monitoring not running' });
+    return res.status(400).json({ error: `Price monitoring not running for ${targetChain.toUpperCase()}` });
   }
 
   const stats = priceService.getStats();
   priceService.stop();
+  priceServices.delete(targetChain);
 
   res.json({
     data: {
-      message: 'Price monitoring stopped',
+      message: `Price monitoring stopped for ${targetChain.toUpperCase()}`,
+      chain: targetChain,
       finalStats: {
         pairsMonitored: stats.pairsMonitored,
         priceUpdates: stats.priceUpdates,
@@ -266,17 +326,20 @@ router.post('/stop', (req: Request, res: Response) => {
   });
 });
 
-// GET /api/prices/pair/:pair - Get prices for specific pair across DEXs
+// GET /api/prices/pair/:pair - Get prices for specific pair across DEXs (supports ?chain=bsc|ethereum|arbitrum|base)
 router.get('/pair/:pair', (req: Request, res: Response) => {
+  const chain = (req.query.chain as SupportedChain) || 'bsc';
+  const priceService = getPriceService(chain);
+
   if (!priceService) {
-    return res.status(400).json({ error: 'Price monitoring not started' });
+    return res.status(400).json({ error: `Price monitoring not started for ${chain.toUpperCase()}` });
   }
 
   const { pair } = req.params;
   const [symbol0, symbol1] = pair.toUpperCase().split('-');
 
   if (!symbol0 || !symbol1) {
-    return res.status(400).json({ error: 'Invalid pair format. Use: TOKEN0-TOKEN1 (e.g., WBNB-USDT)' });
+    return res.status(400).json({ error: 'Invalid pair format. Use: TOKEN0-TOKEN1 (e.g., WBNB-USDT or WETH-USDC)' });
   }
 
   const prices = priceService.getPrices();
@@ -300,7 +363,7 @@ router.get('/pair/:pair', (req: Request, res: Response) => {
   }
 
   if (matching.length === 0) {
-    return res.status(404).json({ error: `No price data found for ${symbol0}/${symbol1}` });
+    return res.status(404).json({ error: `No price data found for ${symbol0}/${symbol1} on ${chain.toUpperCase()}` });
   }
 
   // Calculate spread
@@ -312,6 +375,7 @@ router.get('/pair/:pair', (req: Request, res: Response) => {
   res.json({
     data: {
       pair: `${symbol0}/${symbol1}`,
+      chain,
       dexCount: matching.length,
       minPrice,
       maxPrice,
@@ -320,5 +384,45 @@ router.get('/pair/:pair', (req: Request, res: Response) => {
     }
   });
 });
+
+/**
+ * Auto-start price monitoring services for multiple chains
+ * Called by server.ts on startup
+ */
+export async function autoStartPriceService(chains: SupportedChain[] = ['bsc']): Promise<boolean> {
+  let allSuccess = true;
+
+  for (const chain of chains) {
+    try {
+      const existing = priceServices.get(chain);
+      if (existing) {
+        const stats = existing.getStats();
+        if (stats.isRunning) {
+          console.log(`  📊 Price service already running for ${chain.toUpperCase()}`);
+          continue;
+        }
+      }
+
+      const priceService = new PriceIngestionService({
+        chain,
+        pollIntervalMs: 2000,
+        minSpreadBps: 5,
+      });
+
+      await priceService.start();
+      priceServices.set(chain, priceService);
+      console.log(`  📊 Price Ingestion Service: ${chain.toUpperCase()} STARTED (auto)`);
+    } catch (error) {
+      console.error(`  ⚠️  Price service auto-start failed for ${chain.toUpperCase()}:`, (error as Error).message);
+      allSuccess = false;
+    }
+  }
+
+  if (priceServices.size > 0) {
+    console.log(`     Polling every 2s, min spread: 5bps across ${priceServices.size} chain(s)`);
+  }
+
+  return allSuccess;
+}
 
 export default router;

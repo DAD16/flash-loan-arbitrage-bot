@@ -11,10 +11,17 @@
  * - Real-time progress visualization
  * - UX pattern analysis from DeFi projects
  * - System state visualization
+ *
+ * Task Persistence:
+ * - Uses AgentBase for crash-safe task logging
+ * - Call onStartup() to recover incomplete tasks
+ * - Call receiveTask() when given a new research task
  */
 
 import { Logger } from "winston";
 import { z } from "zod";
+import { AgentBase, AgentStartupResult } from "../../../shared/src/agentBase.js";
+import type { AgentTask } from "../../../shared/src/taskQueue.js";
 
 // ============ Types ============
 
@@ -463,13 +470,75 @@ export const FRAMEWORK_EVALUATION = {
 
 // ============ MOUSE Agent Class ============
 
-export class Mouse {
+export class Mouse extends AgentBase {
   private config: MouseConfig;
   private logger?: Logger;
 
   constructor(config: Partial<MouseConfig> = {}, logger?: Logger) {
+    super('MOUSE');
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.logger = logger;
+  }
+
+  /**
+   * Initialize MOUSE and recover any incomplete tasks from previous session.
+   * Call this on startup before doing any work.
+   *
+   * @returns Startup result with crashed/pending tasks and current task
+   */
+  async initialize(): Promise<AgentStartupResult> {
+    const result = await this.onStartup();
+
+    if (result.currentTask) {
+      this.logger?.info(`MOUSE resuming task: ${result.currentTask.taskDescription}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Start a new research task. The task is saved IMMEDIATELY to disk
+   * before this method returns, ensuring crash recovery.
+   *
+   * @param description - What to research
+   * @param rawInput - The original user request (optional)
+   * @returns The created task with ID
+   */
+  async startResearch(
+    description: string,
+    rawInput?: string
+  ): Promise<AgentTask> {
+    const task = await this.receiveTask(description, {
+      rawInput: rawInput || description,
+      priority: 'normal',
+      metadata: { type: 'research' },
+    });
+
+    // Mark as in progress
+    await this.startTask(task.id);
+
+    return task;
+  }
+
+  /**
+   * Complete the current research task with findings.
+   *
+   * @param findings - Summary of research findings
+   */
+  async finishResearch(findings: string): Promise<void> {
+    await this.completeTask(undefined, findings);
+  }
+
+  /**
+   * Get what MOUSE is currently working on.
+   * Reads from TaskQueue, NOT from memory file.
+   */
+  async whatAmIWorkingOn(): Promise<string | null> {
+    const task = await this.getCurrentTask();
+    if (task) {
+      return task.taskDescription;
+    }
+    return null;
   }
 
   /**

@@ -2,6 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⛔ CRITICAL: NEVER USE THESE COMMANDS
+
+**These commands WILL crash Claude Code. NEVER run them directly:**
+
+| Forbidden Command | Why It Crashes | Safe Alternative |
+|-------------------|----------------|------------------|
+| `taskkill /F /IM node.exe` | Kills Claude's parent process | `node scripts/process-manager.js stop <name>` |
+| `taskkill /IM node.exe` | Same issue | `node scripts/process-manager.js stop <name>` |
+| `Stop-Process -Name node` | PowerShell equivalent | `node scripts/process-manager.js stop <name>` |
+| `wmic process where name="node.exe" delete` | WMIC kill | `node scripts/process-manager.js stop <name>` |
+| Ctrl+C in watched terminals | Interrupts Claude's process | Stop via process manager |
+
+**ALWAYS use the process manager for ANY node process operations:**
+```bash
+node scripts/process-manager.js status      # Check what's running
+node scripts/process-manager.js stop <name> # Stop gracefully
+node scripts/process-manager.js start <name> <cmd...>  # Start detached
+```
+
 ## Multi-Instance Mode
 
 This project supports running multiple Claude Code instances in parallel. Each component has its own CLAUDE.md:
@@ -52,10 +71,60 @@ When sub-instances need cross-scope changes:
 2. User relays to root or appropriate instance
 3. Root instance coordinates shared resource updates
 
-### File Locking (Crash Prevention)
+### Crash Prevention (CRITICAL)
 
-**IMPORTANT**: When modifying shared files (`memory.md`, `state.json`), use the file locking utility to prevent crashes:
+**Full documentation: `docs/CRASH_PREVENTION.md`**
 
+#### Before Starting Work
+
+```bash
+# 1. Clean up stale locks
+npx tsx orchestration/crashProtection.ts cleanup
+
+# 2. Check process status
+node scripts/process-manager.js status
+
+# 3. (Optional) Start crash protection daemon
+npx tsx orchestration/crashProtection.ts start
+```
+
+#### Managing Node Processes
+
+**NEVER use `taskkill` or close terminals with running processes.** Use the process manager:
+
+```bash
+# Start processes (detached, safe)
+node scripts/process-manager.js start dashboard npm run start
+
+# Stop gracefully
+node scripts/process-manager.js stop dashboard
+
+# View status
+node scripts/process-manager.js status
+```
+
+#### File Locking for Shared Files
+
+Use the state manager for safe access to `state.json` and `memory.md`:
+
+```typescript
+import { updateState, appendToMemory, startTask, endTask } from './orchestration/stateManager';
+
+// Update state.json safely
+await updateState((state) => {
+  state.instances.dashboard.status = 'working';
+  return state;
+}, 'dashboard');
+
+// Append to memory.md safely
+await appendToMemory('## Completed\n- Fixed the bug', 'root');
+
+// Mark task start/end
+await startTask('dashboard', 'Building new component');
+await endTask('dashboard');
+```
+
+Or use low-level locking:
 ```typescript
 import { acquireLock, releaseLock, atomicWrite } from './orchestration/fileLock';
 
@@ -67,8 +136,17 @@ try {
 }
 ```
 
-**Test**: `npx tsx testing/test-file-lock.ts`
-**Crash Test**: `powershell testing/multi-instance-crash-test.ps1 -All`
+#### If Crash Occurs
+
+```bash
+npx tsx orchestration/crashProtection.ts cleanup
+npx tsx orchestration/crashProtection.ts status
+type scripts\logs\crash-monitor.log
+```
+
+**Tests:**
+- `npx tsx testing/test-file-lock.ts`
+- `powershell testing/multi-instance-crash-test.ps1 -All`
 
 ### Global State Management
 

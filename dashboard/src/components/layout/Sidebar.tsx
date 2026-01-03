@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -11,12 +12,14 @@ import {
   TrendingUp,
   Wallet,
   FileCode,
+  Network,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import clsx from 'clsx';
 
 const navItems = [
   { path: '/overview', icon: LayoutDashboard, label: 'Overview' },
+  { path: '/multi-chain', icon: Network, label: 'Multi-Chain' },
   { path: '/prices', icon: TrendingUp, label: 'Live Prices' },
   { path: '/wallets', icon: Wallet, label: 'Wallets' },
   { path: '/contracts', icon: FileCode, label: 'Contracts' },
@@ -29,6 +32,15 @@ const navItems = [
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useStore();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Restart video when sidebar expands
+  useEffect(() => {
+    if (!sidebarCollapsed && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [sidebarCollapsed]);
 
   return (
     <aside
@@ -38,14 +50,27 @@ export default function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-matrix-border">
+      {/* Animated Logo */}
+      <div className={clsx(
+        "flex items-center justify-center border-b border-matrix-border overflow-hidden",
+        sidebarCollapsed ? "h-16 w-16" : "h-64 w-64"
+      )}>
         {sidebarCollapsed ? (
           <span className="text-2xl font-bold text-matrix-primary matrix-glow">M</span>
         ) : (
-          <div className="flex items-center gap-2">
+          <video
+            ref={videoRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          >
+            <source src="/matrix-logo-small.webm" type="video/webm" />
+            <source src="/matrix-logo.mp4" type="video/mp4" />
+            {/* Fallback for browsers without video support */}
             <span className="text-2xl font-bold text-matrix-primary matrix-glow">MATRIX</span>
-          </div>
+          </video>
         )}
       </div>
 

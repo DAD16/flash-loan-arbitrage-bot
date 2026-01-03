@@ -16,6 +16,7 @@ import { EventEmitter } from 'events';
 
 export interface PriceUpdate {
   type: 'PRICE_UPDATE';
+  chain: string;
   pair: string;
   dex: string;
   price: number;
@@ -28,10 +29,13 @@ export interface PriceUpdate {
 
 export interface OpportunityUpdate {
   type: 'OPPORTUNITY';
+  chain: string;
   id: string;
   pair: string;
   buyDex: string;
   sellDex: string;
+  buyPrice: number;
+  sellPrice: number;
   spreadBps: number;
   netProfitBps: number;
   estimatedProfitUsd: number;

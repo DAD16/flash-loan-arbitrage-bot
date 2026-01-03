@@ -13,9 +13,16 @@
  * - Cost calculations for infrastructure
  * - Competitor action tracking and visualization
  * - MEV relay integration (bloXroute, 48 Club)
+ *
+ * Task Persistence:
+ * - Uses AgentBase for crash-safe task logging
+ * - Call onStartup() to recover incomplete tasks
+ * - Call receiveTask() when given a new infrastructure task
  */
 
 import { Logger } from "winston";
+import { AgentBase, AgentStartupResult } from "../../../shared/src/agentBase.js";
+import type { AgentTask } from "../../../shared/src/taskQueue.js";
 
 // ============ Types ============
 
@@ -622,11 +629,54 @@ export const IMPLEMENTATION_ROADMAP = {
 
 // ============ THE ARCHITECT Agent Class ============
 
-export class Architect {
+export class Architect extends AgentBase {
   private logger?: Logger;
 
   constructor(logger?: Logger) {
+    super('ARCHITECT');
     this.logger = logger;
+  }
+
+  /**
+   * Initialize THE ARCHITECT and recover any incomplete tasks.
+   */
+  async initialize(): Promise<AgentStartupResult> {
+    const result = await this.onStartup();
+    if (result.currentTask) {
+      this.logger?.info(`ARCHITECT resuming task: ${result.currentTask.taskDescription}`);
+    }
+    return result;
+  }
+
+  /**
+   * Start a new infrastructure task. Saved IMMEDIATELY for crash recovery.
+   */
+  async startInfrastructureTask(
+    description: string,
+    rawInput?: string
+  ): Promise<AgentTask> {
+    const task = await this.receiveTask(description, {
+      rawInput: rawInput || description,
+      priority: 'normal',
+      metadata: { type: 'infrastructure' },
+    });
+    await this.startTask(task.id);
+    return task;
+  }
+
+  /**
+   * Complete the current infrastructure task.
+   */
+  async finishInfrastructureTask(result: string): Promise<void> {
+    await this.completeTask(undefined, result);
+  }
+
+  /**
+   * Get what THE ARCHITECT is currently working on.
+   */
+  async whatAmIWorkingOn(): Promise<string | null> {
+    const task = await this.getCurrentTask();
+    return task ? task.taskDescription : null;
   }
 
   /**

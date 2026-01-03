@@ -1,6 +1,11 @@
 /**
  * Blockchain Execution Service
  * Handles real flash loan arbitrage execution on-chain
+ *
+ * MEV Protection:
+ * - Ethereum mainnet: Routes through Flashbots Protect by default
+ * - Sepolia testnet: Routes through Flashbots Sepolia RPC
+ * - BSC: Direct RPC (no private mempool available - use contract obfuscation)
  */
 
 import {
@@ -19,6 +24,10 @@ import { sepolia, bsc, mainnet } from 'viem/chains';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+
+// MEV Protection - Flashbots Protect RPCs
+const FLASHBOTS_MAINNET_RPC = 'https://rpc.flashbots.net/fast';
+const FLASHBOTS_SEPOLIA_RPC = 'https://rpc-sepolia.flashbots.net/';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -116,6 +125,9 @@ export interface ExecutionResult {
   gasUsed?: bigint;
   profit?: bigint;
   error?: string;
+  // MEV Protection info
+  mevProtected?: boolean;
+  rpcUsed?: string;
 }
 
 // Execution parameters
@@ -137,6 +149,11 @@ export interface ExecutionParams {
 
 /**
  * Execute a flash loan arbitrage on-chain
+ *
+ * MEV Protection:
+ * - Ethereum: Uses Flashbots Protect for transaction submission
+ * - Sepolia: Uses Flashbots Sepolia RPC
+ * - BSC: Direct RPC (no private mempool available)
  */
 export async function executeFlashLoan(params: ExecutionParams): Promise<ExecutionResult> {
   const env = loadEnv();
@@ -148,26 +165,39 @@ export async function executeFlashLoan(params: ExecutionParams): Promise<Executi
 
   // Get chain configuration
   let chain: Chain;
-  let rpcUrl: string;
+  let readRpcUrl: string;  // For reads (simulation, confirmations)
+  let writeRpcUrl: string; // For transaction submission
+  let mevProtected = false;
+  let rpcName = 'Public RPC';
 
   switch (params.chain) {
     case 'sepolia':
       chain = sepolia;
-      rpcUrl = env.SEPOLIA_RPC_URL;
+      readRpcUrl = env.SEPOLIA_RPC_URL;
+      writeRpcUrl = FLASHBOTS_SEPOLIA_RPC; // MEV protected
+      mevProtected = true;
+      rpcName = 'Flashbots Sepolia';
       break;
     case 'bsc':
       chain = bsc;
-      rpcUrl = env.BSC_RPC_URL;
+      readRpcUrl = env.BSC_RPC_URL;
+      writeRpcUrl = env.BSC_RPC_URL; // No MEV protection on BSC
+      mevProtected = false;
+      rpcName = 'BSC Public RPC';
+      console.warn('[Execution] WARNING: BSC has no MEV protection - use contract obfuscation!');
       break;
     case 'ethereum':
       chain = mainnet;
-      rpcUrl = env.ETH_RPC_URL;
+      readRpcUrl = env.ETH_RPC_URL;
+      writeRpcUrl = FLASHBOTS_MAINNET_RPC; // MEV protected via Flashbots Protect
+      mevProtected = true;
+      rpcName = 'Flashbots Protect';
       break;
     default:
       return { success: false, error: `Unsupported chain: ${params.chain}` };
   }
 
-  if (!rpcUrl) {
+  if (!readRpcUrl) {
     return { success: false, error: `RPC URL not configured for ${params.chain}` };
   }
 
@@ -182,16 +212,20 @@ export async function executeFlashLoan(params: ExecutionParams): Promise<Executi
     const pk = (privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`) as `0x${string}`;
     const account = privateKeyToAccount(pk);
 
+    // Public client for reads (simulation, confirmations) - uses regular RPC
     const publicClient = createPublicClient({
       chain,
-      transport: http(rpcUrl),
+      transport: http(readRpcUrl),
     });
 
+    // Wallet client for writes - uses MEV-protected RPC when available
     const walletClient = createWalletClient({
       account,
       chain,
-      transport: http(rpcUrl),
+      transport: http(writeRpcUrl),
     });
+
+    console.log(`[Execution] Using ${rpcName} for transaction submission (MEV Protected: ${mevProtected})`);
 
     // Encode arbitrage parameters
     const arbParams = {
@@ -288,12 +322,16 @@ export async function executeFlashLoan(params: ExecutionParams): Promise<Executi
         txHash,
         blockNumber: receipt.blockNumber,
         gasUsed: receipt.gasUsed,
+        mevProtected,
+        rpcUsed: rpcName,
       };
     } else {
       return {
         success: false,
         txHash,
         error: 'Transaction reverted',
+        mevProtected,
+        rpcUsed: rpcName,
       };
     }
   } catch (error) {
@@ -301,6 +339,8 @@ export async function executeFlashLoan(params: ExecutionParams): Promise<Executi
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
+      mevProtected,
+      rpcUsed: rpcName,
     };
   }
 }
@@ -377,6 +417,11 @@ export async function checkExecutorStatus(
 
 /**
  * Simple test transaction - just sends a small amount to verify wallet works
+ *
+ * MEV Protection:
+ * - Ethereum: Uses Flashbots Protect
+ * - Sepolia: Uses Flashbots Sepolia RPC
+ * - BSC: Direct RPC (no private mempool)
  */
 export async function testWalletTransaction(chain: string): Promise<ExecutionResult> {
   const env = loadEnv();
@@ -387,22 +432,38 @@ export async function testWalletTransaction(chain: string): Promise<ExecutionRes
   }
 
   let chainObj: Chain;
-  let rpcUrl: string;
+  let readRpcUrl: string;
+  let writeRpcUrl: string;
+  let mevProtected = false;
+  let rpcName = 'Public RPC';
 
   switch (chain) {
     case 'sepolia':
       chainObj = sepolia;
-      rpcUrl = env.SEPOLIA_RPC_URL;
+      readRpcUrl = env.SEPOLIA_RPC_URL;
+      writeRpcUrl = FLASHBOTS_SEPOLIA_RPC;
+      mevProtected = true;
+      rpcName = 'Flashbots Sepolia';
       break;
     case 'bsc':
       chainObj = bsc;
-      rpcUrl = env.BSC_RPC_URL;
+      readRpcUrl = env.BSC_RPC_URL;
+      writeRpcUrl = env.BSC_RPC_URL;
+      mevProtected = false;
+      rpcName = 'BSC Public RPC';
+      break;
+    case 'ethereum':
+      chainObj = mainnet;
+      readRpcUrl = env.ETH_RPC_URL;
+      writeRpcUrl = FLASHBOTS_MAINNET_RPC;
+      mevProtected = true;
+      rpcName = 'Flashbots Protect';
       break;
     default:
       return { success: false, error: `Unsupported chain: ${chain}` };
   }
 
-  if (!rpcUrl) {
+  if (!readRpcUrl) {
     return { success: false, error: `RPC URL not configured for ${chain}` };
   }
 
@@ -410,19 +471,21 @@ export async function testWalletTransaction(chain: string): Promise<ExecutionRes
     const pk = (privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`) as `0x${string}`;
     const account = privateKeyToAccount(pk);
 
+    // Read client for confirmations
     const publicClient = createPublicClient({
       chain: chainObj,
-      transport: http(rpcUrl),
+      transport: http(readRpcUrl),
     });
 
+    // Write client with MEV protection when available
     const walletClient = createWalletClient({
       account,
       chain: chainObj,
-      transport: http(rpcUrl),
+      transport: http(writeRpcUrl),
     });
 
     // Send 0 ETH to self (just to test transaction signing/submission)
-    console.log('[Test] Sending test transaction...');
+    console.log(`[Test] Sending test transaction via ${rpcName} (MEV Protected: ${mevProtected})...`);
 
     const txHash = await walletClient.sendTransaction({
       to: account.address,
@@ -441,11 +504,15 @@ export async function testWalletTransaction(chain: string): Promise<ExecutionRes
       txHash,
       blockNumber: receipt.blockNumber,
       gasUsed: receipt.gasUsed,
+      mevProtected,
+      rpcUsed: rpcName,
     };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
+      mevProtected,
+      rpcUsed: rpcName,
     };
   }
 }

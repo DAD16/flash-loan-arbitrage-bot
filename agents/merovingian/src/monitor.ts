@@ -6,7 +6,7 @@
  */
 
 import { WebSocket } from 'ws';
-import { AgentLogger, type ChainId, type PendingTransaction } from '@matrix/shared';
+import { AgentLogger, AgentBase, AgentStartupResult, AgentTask, type ChainId, type PendingTransaction } from '@matrix/shared';
 import type { MempoolConfig, ConnectionStatus } from './types.js';
 
 type TransactionHandler = (tx: PendingTransaction) => void;
@@ -25,7 +25,7 @@ interface RpcResponse {
   error?: { code: number; message: string };
 }
 
-export class Merovingian {
+export class Merovingian extends AgentBase {
   private logger: AgentLogger;
   private config: MempoolConfig;
   private connections: Map<ChainId, WebSocket>;

@@ -2,7 +2,7 @@
  * KEYMAKER - HashiCorp Vault Integration
  */
 
-import { AgentLogger } from '@matrix/shared';
+import { AgentLogger, AgentBase, AgentStartupResult, AgentTask } from '@matrix/shared';
 import type {
   VaultConfig,
   WalletCredentials,
@@ -10,7 +10,7 @@ import type {
   SecretMetadata,
 } from './types.js';
 
-export class Keymaker {
+export class Keymaker extends AgentBase {
   private logger: AgentLogger;
   private config: VaultConfig;
   private vaultToken: string | null = null;

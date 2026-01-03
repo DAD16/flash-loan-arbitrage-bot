@@ -3,6 +3,7 @@ import { Zap, Clock, CheckCircle, XCircle, Filter, ArrowRight, Loader2 } from 'l
 import Card, { CardHeader } from '../components/ui/Card';
 import StatCard from '../components/ui/StatCard';
 import Badge, { ConfidenceBadge, StatusBadge } from '../components/ui/Badge';
+import { CallTypeBadge, GasSavingsIndicator, type CallType } from '../components/ui/DirectPoolIndicator';
 import {
   useOpportunities,
   usePendingOpportunities,
@@ -15,11 +16,13 @@ import clsx from 'clsx';
 import axios from 'axios';
 
 type StatusFilter = 'all' | 'detected' | 'executing' | 'completed' | 'failed' | 'skipped';
+type CallTypeFilter = 'all' | 'router' | 'direct' | 'hybrid';
 
 export default function Opportunities() {
   const selectedChain = useStore((state) => state.selectedChain);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [confidenceFilter, setConfidenceFilter] = useState<string>('all');
+  const [callTypeFilter, setCallTypeFilter] = useState<CallTypeFilter>('all');
   const [executingId, setExecutingId] = useState<string | null>(null);
   const addNotification = useStore((state) => state.addNotification);
 
@@ -119,9 +122,26 @@ export default function Opportunities() {
     }
   };
 
+  // Helper to determine call type from opportunity data
+  const getCallType = (opp: any): CallType => {
+    // Check for explicit call_type field first
+    if (opp.call_type) return opp.call_type as CallType;
+    // Fallback: infer from data (mock logic - real implementation would use API data)
+    if (opp.pool_addresses && opp.pool_addresses.length > 0) return 'direct';
+    if (opp.uses_router === false) return 'direct';
+    if (opp.hybrid_route) return 'hybrid';
+    return 'router';
+  };
+
   const filteredOpportunities = opportunities.filter((opp: any) => {
     if (confidenceFilter !== 'all' && opp.confidence !== confidenceFilter) {
       return false;
+    }
+    if (callTypeFilter !== 'all') {
+      const oppCallType = getCallType(opp);
+      if (oppCallType !== callTypeFilter) {
+        return false;
+      }
     }
     return true;
   });
@@ -301,6 +321,21 @@ export default function Opportunities() {
             <option value="low">Low</option>
           </select>
         </div>
+
+        {/* Call Type Filter */}
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-matrix-text-muted" />
+          <select
+            value={callTypeFilter}
+            onChange={(e) => setCallTypeFilter(e.target.value as CallTypeFilter)}
+            className="bg-matrix-surface border-matrix-border"
+          >
+            <option value="all">All Call Types</option>
+            <option value="direct">Direct Pool</option>
+            <option value="router">Router</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </div>
       </div>
 
       {/* Opportunities Table */}
@@ -310,6 +345,7 @@ export default function Opportunities() {
             <tr>
               <th>Route</th>
               <th>DEXes</th>
+              <th>Call Type</th>
               <th>Expected Profit</th>
               <th>Confidence</th>
               <th>Status</th>
@@ -344,6 +380,15 @@ export default function Opportunities() {
                       ))}
                     </div>
                   </td>
+                  <td>
+                    <div className="flex flex-col gap-1">
+                      <CallTypeBadge callType={getCallType(opp)} />
+                      <GasSavingsIndicator
+                        gasEstimateDirect={opp.gas_estimate_direct}
+                        gasEstimateRouter={opp.gas_estimate_router}
+                      />
+                    </div>
+                  </td>
                   <td className="font-mono text-matrix-success">
                     +{formatValue(opp.expected_net_profit_wei)} BNB
                   </td>
@@ -360,7 +405,7 @@ export default function Opportunities() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="text-center py-12">
+                <td colSpan={7} className="text-center py-12">
                   <div className="text-matrix-text-muted">
                     <Zap className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>No opportunities found</p>

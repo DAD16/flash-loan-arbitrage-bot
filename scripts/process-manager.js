@@ -109,6 +109,24 @@ async function startProcess(name, command, workDir = null) {
   console.log(`  Logs: ${logFile}`);
 }
 
+async function stopAllProcesses() {
+  const state = loadState();
+  const names = Object.keys(state.processes);
+
+  if (names.length === 0) {
+    console.log('No managed processes to stop.');
+    return;
+  }
+
+  console.log(`Stopping ${names.length} managed processes...`);
+
+  for (const name of names) {
+    await stopProcess(name);
+  }
+
+  console.log('✓ All managed processes stopped.');
+}
+
 async function stopProcess(name, silent = false) {
   const state = loadState();
   const proc = state.processes[name];
@@ -292,10 +310,13 @@ Usage:
 Commands:
   start <name> <cmd...>   Start a named process
   stop <name>             Stop a named process gracefully
+  stop all                Stop ALL managed processes gracefully
   restart <name>          Restart a named process
   status                  Show all managed processes
   logs <name> [lines]     Show last N lines of logs (default: 50)
   tail <name>             Follow logs in real-time
+
+⚠️  NEVER use 'taskkill /IM node.exe' - it will crash Claude Code!
 
 Examples:
   node scripts/process-manager.js start dashboard npm run dev
@@ -328,9 +349,14 @@ switch (command) {
   case 'stop':
     if (!args[1]) {
       console.log('Usage: stop <name>');
+      console.log('       stop all     (stop all managed processes)');
       process.exit(1);
     }
-    stopProcess(args[1]);
+    if (args[1] === 'all') {
+      stopAllProcesses();
+    } else {
+      stopProcess(args[1]);
+    }
     break;
 
   case 'restart':

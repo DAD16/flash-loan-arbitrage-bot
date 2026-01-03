@@ -30,6 +30,14 @@ interface IUniswapV2Router {
     ) external returns (uint256[] memory amounts);
 }
 
+// Direct pool interface for gas-optimized swaps
+interface IUniswapV2Pair {
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external;
+    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+}
+
 /**
  * @title MultiDexRouter
  * @author Matrix Team
@@ -61,6 +69,12 @@ contract MultiDexRouter is IMultiDexRouter, Ownable {
 
     /// @notice Uniswap V3 callback validation
     mapping(address => bool) public validV3Pools;
+
+    /// @notice Valid V2-style pools for direct swaps (PancakeSwap, SushiSwap, etc.)
+    mapping(address => bool) public validV2Pools;
+
+    /// @notice Use direct pool calls instead of router (gas optimization)
+    bool public useDirectSwaps = true;
 
     // ============ Constants ============
     uint160 internal constant MIN_SQRT_RATIO = 4295128739;
@@ -158,9 +172,36 @@ contract MultiDexRouter is IMultiDexRouter, Ownable {
         if (params.dex == DexId.UniswapV3) {
             amountOut = _swapUniswapV3(params);
         } else if (params.dex == DexId.SushiSwap) {
-            amountOut = _swapV2Style(params, dexRouters[DexId.SushiSwap]);
+            // Use direct pool call if pool is provided and valid, otherwise use router
+            if (useDirectSwaps && params.pool != address(0) && validV2Pools[params.pool]) {
+                amountOut = _swapV2Direct(params);
+            } else {
+                amountOut = _swapV2Style(params, dexRouters[DexId.SushiSwap]);
+            }
         } else if (params.dex == DexId.PancakeSwap) {
-            amountOut = _swapV2Style(params, dexRouters[DexId.PancakeSwap]);
+            // Use direct pool call if pool is provided and valid, otherwise use router
+            if (useDirectSwaps && params.pool != address(0) && validV2Pools[params.pool]) {
+                amountOut = _swapV2Direct(params);
+            } else {
+                amountOut = _swapV2Style(params, dexRouters[DexId.PancakeSwap]);
+            }
+        } else if (
+            params.dex == DexId.Biswap ||
+            params.dex == DexId.ApeSwap ||
+            params.dex == DexId.MDEX ||
+            params.dex == DexId.BaseSwap ||
+            params.dex == DexId.Alienbase ||
+            params.dex == DexId.SwapBased ||
+            params.dex == DexId.Aerodrome ||
+            params.dex == DexId.Velodrome ||
+            params.dex == DexId.Camelot
+        ) {
+            // All V2-style DEXs use direct pool calls for gas optimization
+            if (params.pool != address(0) && validV2Pools[params.pool]) {
+                amountOut = _swapV2Direct(params);
+            } else {
+                revert UnsupportedDex();
+            }
         } else {
             revert UnsupportedDex();
         }
@@ -186,6 +227,44 @@ contract MultiDexRouter is IMultiDexRouter, Ownable {
         );
 
         amountOut = uint256(-(zeroForOne ? amount1 : amount0));
+    }
+
+    /**
+     * @notice Execute direct V2-style swap (no router, ~30% gas savings)
+     * @dev Transfers tokens directly to pool, then calls swap()
+     * @param params Swap parameters with pool address set
+     * @return amountOut Output amount received
+     */
+    function _swapV2Direct(SwapParams memory params) internal returns (uint256 amountOut) {
+        IUniswapV2Pair pair = IUniswapV2Pair(params.pool);
+
+        // Determine swap direction
+        address token0 = pair.token0();
+        bool isToken0 = params.tokenIn == token0;
+
+        // Get reserves to calculate output amount
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        (uint112 reserveIn, uint112 reserveOut) = isToken0
+            ? (reserve0, reserve1)
+            : (reserve1, reserve0);
+
+        // Calculate output using constant product formula with 0.3% fee
+        // amountOut = (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+        uint256 amountInWithFee = params.amountIn * 997;
+        amountOut = (amountInWithFee * reserveOut) / (uint256(reserveIn) * 1000 + amountInWithFee);
+
+        // Slippage check
+        if (amountOut < params.minAmountOut) revert SlippageExceeded();
+
+        // Transfer input tokens directly to the pair (no approval needed!)
+        IERC20(params.tokenIn).safeTransfer(params.pool, params.amountIn);
+
+        // Execute swap - pool sends output tokens to this contract
+        (uint256 amount0Out, uint256 amount1Out) = isToken0
+            ? (uint256(0), amountOut)
+            : (amountOut, uint256(0));
+
+        pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
     }
 
     /**
@@ -258,6 +337,29 @@ contract MultiDexRouter is IMultiDexRouter, Ownable {
      */
     function setValidV3Pool(address pool, bool valid) external onlyOwner {
         validV3Pools[pool] = valid;
+    }
+
+    /**
+     * @notice Set valid V2 pool for direct swaps
+     */
+    function setValidV2Pool(address pool, bool valid) external onlyOwner {
+        validV2Pools[pool] = valid;
+    }
+
+    /**
+     * @notice Batch set valid V2 pools
+     */
+    function setValidV2Pools(address[] calldata pools, bool valid) external onlyOwner {
+        for (uint256 i = 0; i < pools.length; i++) {
+            validV2Pools[pools[i]] = valid;
+        }
+    }
+
+    /**
+     * @notice Toggle direct swap mode (gas optimization)
+     */
+    function setUseDirectSwaps(bool enabled) external onlyOwner {
+        useDirectSwaps = enabled;
     }
 
     /**

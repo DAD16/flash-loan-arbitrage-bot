@@ -11,9 +11,16 @@
  * - Security pattern implementation
  * - Vulnerability detection
  * - Access control design
+ *
+ * Task Persistence:
+ * - Uses AgentBase for crash-safe task logging
+ * - Call onStartup() to recover incomplete tasks
+ * - Call receiveTask() when given a new security analysis task
  */
 
 import { Logger } from "winston";
+import { AgentBase, AgentStartupResult } from "../../../shared/src/agentBase.js";
+import type { AgentTask } from "../../../shared/src/taskQueue.js";
 
 // ============ Types ============
 
@@ -578,11 +585,12 @@ export const FLASH_LOAN_RECEIVER_ANALYSIS = {
 
 // ============ LOCK Agent Class ============
 
-export class Lock {
+export class Lock extends AgentBase {
   private config: SecurityConfig;
   private logger?: Logger;
 
   constructor(config: Partial<SecurityConfig> = {}, logger?: Logger) {
+    super('LOCK');
     this.config = {
       strictMode: true,
       attackVectors: ATTACK_VECTORS,
@@ -594,6 +602,48 @@ export class Lock {
     };
     this.logger = logger;
   }
+  /**
+   * Initialize LOCK and recover any incomplete tasks.
+   */
+  async initialize(): Promise<AgentStartupResult> {
+    const result = await this.onStartup();
+    if (result.currentTask) {
+      this.logger?.info(`LOCK resuming task: ${result.currentTask.taskDescription}`);
+    }
+    return result;
+  }
+
+  /**
+   * Start a new security analysis task. Saved IMMEDIATELY for crash recovery.
+   */
+  async startSecurityTask(
+    description: string,
+    rawInput?: string
+  ): Promise<AgentTask> {
+    const task = await this.receiveTask(description, {
+      rawInput: rawInput || description,
+      priority: 'normal',
+      metadata: { type: 'security' },
+    });
+    await this.startTask(task.id);
+    return task;
+  }
+
+  /**
+   * Complete the current security task.
+   */
+  async finishSecurityTask(result: string): Promise<void> {
+    await this.completeTask(undefined, result);
+  }
+
+  /**
+   * Get what LOCK is currently working on.
+   */
+  async whatAmIWorkingOn(): Promise<string | null> {
+    const task = await this.getCurrentTask();
+    return task ? task.taskDescription : null;
+  }
+
 
   /**
    * Get all known attack vectors

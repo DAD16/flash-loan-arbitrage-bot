@@ -32,8 +32,8 @@ interface Notification {
 }
 
 export const useStore = create<AppState>((set) => ({
-  // Chain selection - default to Sepolia (testnet)
-  selectedChain: 'sepolia',
+  // Chain selection - default to BSC (mainnet)
+  selectedChain: 'bsc',
   setSelectedChain: (chain) => set({ selectedChain: chain }),
 
   // Sidebar - start expanded

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -16,6 +16,7 @@ import clsx from 'clsx';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import FastModeControl from '../components/FastModeControl';
+import PriceSparkline, { PricePoint, generateMockPriceData } from '../components/charts/PriceSparkline';
 import { useStore, type Chain } from '../store/useStore';
 import { useLivePrices, useLiveOpportunities, type PriceUpdate, type OpportunityUpdate } from '../hooks/useWebSocket';
 
@@ -23,9 +24,9 @@ import { useLivePrices, useLiveOpportunities, type PriceUpdate, type Opportunity
 const CHAIN_CONFIGS: Record<Chain, { name: string; supported: boolean; symbol: string }> = {
   bsc: { name: 'BSC', supported: true, symbol: 'BNB' },
   sepolia: { name: 'Sepolia', supported: false, symbol: 'ETH' },
-  ethereum: { name: 'Ethereum', supported: false, symbol: 'ETH' },
-  arbitrum: { name: 'Arbitrum', supported: false, symbol: 'ETH' },
-  base: { name: 'Base', supported: false, symbol: 'ETH' },
+  ethereum: { name: 'Ethereum', supported: true, symbol: 'ETH' },
+  arbitrum: { name: 'Arbitrum', supported: true, symbol: 'ETH' },
+  base: { name: 'Base', supported: true, symbol: 'ETH' },
   optimism: { name: 'Optimism', supported: false, symbol: 'ETH' },
 };
 
@@ -73,6 +74,25 @@ interface LivePrice {
 
 const API_BASE = 'http://localhost:9081';
 
+// Format price with appropriate precision for very small or large numbers
+function formatPrice(price: number): string {
+  if (price === 0) return '0';
+  if (price < 0.000001) {
+    // Very small prices (like meme tokens) - use scientific notation
+    return price.toExponential(4);
+  }
+  if (price < 0.01) {
+    return price.toFixed(8);
+  }
+  if (price < 1) {
+    return price.toFixed(6);
+  }
+  if (price < 1000) {
+    return price.toFixed(4);
+  }
+  return price.toFixed(2);
+}
+
 export default function Prices() {
   const { addNotification, selectedChain } = useStore();
   const chainConfig = CHAIN_CONFIGS[selectedChain];
@@ -85,20 +105,33 @@ export default function Prices() {
   const [stopping, setStopping] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // Price history for sparklines - stores last 60 price points per pair
+  const priceHistoryRef = useRef<Map<string, PricePoint[]>>(new Map());
+  const [priceHistory, setPriceHistory] = useState<Map<string, PricePoint[]>>(new Map());
+
   // WebSocket hooks for real-time updates
   const { connected: wsPricesConnected, prices: wsPrices, latency } = useLivePrices();
   const { connected: wsOpportunitiesConnected, opportunities: wsOpportunities } = useLiveOpportunities();
   const wsConnected = wsPricesConnected || wsOpportunitiesConnected;
 
-  // Merge WebSocket price updates into livePrices view
+  // Map frontend chain names to API chain names (must be before useMemo hooks that use it)
+  const apiChain = chainConfig.supported ? selectedChain : 'bsc';
+
+  // Filter WebSocket data by selected chain and merge with HTTP data
   const mergedLivePrices = useMemo(() => {
     if (!wsConnected || wsPrices.length === 0) {
       return livePrices;
     }
 
-    // Group WebSocket prices by pair
+    // Filter WebSocket prices by selected chain
+    const chainPrices = wsPrices.filter(p => p.chain === apiChain);
+    if (chainPrices.length === 0) {
+      return livePrices;
+    }
+
+    // Group by pair
     const wsPricesByPair = new Map<string, PriceUpdate[]>();
-    for (const p of wsPrices) {
+    for (const p of chainPrices) {
       const existing = wsPricesByPair.get(p.pair) || [];
       existing.push(p);
       wsPricesByPair.set(p.pair, existing);
@@ -128,71 +161,88 @@ export default function Prices() {
       });
     }
 
-    // Sort by spread (highest first) and return, fallback to HTTP if no WS data
     return merged.length > 0 ? merged.sort((a, b) => b.spreadBps - a.spreadBps) : livePrices;
-  }, [wsConnected, wsPrices, livePrices]);
+  }, [wsConnected, wsPrices, livePrices, apiChain]);
 
-  // Convert WebSocket opportunities to spreads format
+  // Filter WebSocket opportunities by selected chain and merge with HTTP data
   const mergedSpreads = useMemo(() => {
     if (!wsConnected || wsOpportunities.length === 0) {
       return spreads;
     }
 
+    // Filter by selected chain
+    const chainOpportunities = wsOpportunities.filter(opp => opp.chain === apiChain);
+    if (chainOpportunities.length === 0) {
+      return spreads;
+    }
+
     // Map WS opportunities to spread format
-    const wsToSpreads: Spread[] = wsOpportunities.map(opp => ({
+    const wsToSpreads: Spread[] = chainOpportunities.map(opp => ({
       pair: opp.pair,
       buyDex: opp.buyDex,
       sellDex: opp.sellDex,
-      buyPrice: 0, // Not available in WS update
-      sellPrice: 0,
+      buyPrice: opp.buyPrice || 0,
+      sellPrice: opp.sellPrice || 0,
       spreadBps: opp.spreadBps,
       netProfitBps: opp.netProfitBps,
       isProfitable: opp.netProfitBps > 0,
       estimatedProfitUsd: opp.estimatedProfitUsd,
     }));
 
-    // Merge with HTTP spreads, preferring newer WS data
+    // Merge with HTTP spreads
     const spreadMap = new Map<string, Spread>();
     for (const s of spreads) {
       spreadMap.set(`${s.pair}-${s.buyDex}-${s.sellDex}`, s);
     }
     for (const s of wsToSpreads) {
-      spreadMap.set(`${s.pair}-${s.buyDex}-${s.sellDex}`, s);
+      const key = `${s.pair}-${s.buyDex}-${s.sellDex}`;
+      const existing = spreadMap.get(key);
+      if (existing && s.buyPrice === 0 && s.sellPrice === 0) {
+        spreadMap.set(key, { ...s, buyPrice: existing.buyPrice, sellPrice: existing.sellPrice });
+      } else {
+        spreadMap.set(key, s);
+      }
     }
 
     return Array.from(spreadMap.values()).sort((a, b) => b.spreadBps - a.spreadBps);
-  }, [wsConnected, wsOpportunities, spreads]);
+  }, [wsConnected, wsOpportunities, spreads, apiChain]);
 
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/prices/status`);
+      const response = await fetch(`${API_BASE}/api/prices/status?chain=${apiChain}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       const data = await response.json();
       setStatus(data.data);
     } catch (error) {
       console.error('Error fetching status:', error);
     }
-  }, []);
+  }, [apiChain]);
 
   const fetchSpreads = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/prices/spreads`);
+      const response = await fetch(`${API_BASE}/api/prices/spreads?chain=${apiChain}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       const data = await response.json();
       setSpreads(data.data || []);
       setSummary(data.summary || null);
     } catch (error) {
       console.error('Error fetching spreads:', error);
     }
-  }, []);
+  }, [apiChain]);
 
   const fetchLivePrices = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/prices/live`);
+      const response = await fetch(`${API_BASE}/api/prices/live?chain=${apiChain}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       const data = await response.json();
       setLivePrices(data.data?.prices || []);
     } catch (error) {
       console.error('Error fetching live prices:', error);
     }
-  }, []);
+  }, [apiChain]);
 
   const fetchAll = useCallback(async () => {
     await Promise.all([fetchStatus(), fetchSpreads(), fetchLivePrices()]);
@@ -213,13 +263,50 @@ export default function Prices() {
     };
   }, [fetchAll, autoRefresh]);
 
+  // Update price history for sparklines when prices change
+  useEffect(() => {
+    if (mergedLivePrices.length === 0) return;
+
+    const now = Date.now();
+    const historyMap = priceHistoryRef.current;
+
+    mergedLivePrices.forEach((priceData) => {
+      // Calculate average price across DEXes for the sparkline
+      const avgPrice = priceData.dexes.reduce((sum, d) => sum + d.price0, 0) / priceData.dexes.length;
+
+      const history = historyMap.get(priceData.pair) || [];
+      const newPoint: PricePoint = { timestamp: now, price: avgPrice };
+
+      // Keep only last 60 points
+      const updatedHistory = [...history, newPoint].slice(-60);
+      historyMap.set(priceData.pair, updatedHistory);
+    });
+
+    // Trigger a state update
+    setPriceHistory(new Map(historyMap));
+  }, [mergedLivePrices]);
+
+  // Initialize mock price history for demo purposes
+  useEffect(() => {
+    if (mergedLivePrices.length > 0 && priceHistoryRef.current.size === 0) {
+      mergedLivePrices.forEach((priceData) => {
+        const avgPrice = priceData.dexes.reduce((sum, d) => sum + d.price0, 0) / priceData.dexes.length;
+        if (avgPrice > 0) {
+          const mockHistory = generateMockPriceData(avgPrice, 60, 0.005);
+          priceHistoryRef.current.set(priceData.pair, mockHistory);
+        }
+      });
+      setPriceHistory(new Map(priceHistoryRef.current));
+    }
+  }, [mergedLivePrices]);
+
   const handleStart = async () => {
     setStarting(true);
     try {
       const response = await fetch(`${API_BASE}/api/prices/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pollIntervalMs: 2000, minSpreadBps: 5 }),
+        body: JSON.stringify({ chain: apiChain, pollIntervalMs: 2000, minSpreadBps: 5 }),
       });
       const data = await response.json();
 
@@ -227,7 +314,7 @@ export default function Prices() {
         addNotification({
           type: 'success',
           title: 'Price Monitoring Started',
-          message: `Monitoring ${data.data.pairsMonitored || 'multiple'} pairs`,
+          message: `Monitoring ${data.data.pairsMonitored || 'multiple'} pairs on ${apiChain.toUpperCase()}`,
         });
         fetchAll();
       } else {
@@ -252,6 +339,8 @@ export default function Prices() {
     try {
       const response = await fetch(`${API_BASE}/api/prices/stop`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chain: apiChain }),
       });
       const data = await response.json();
 
@@ -259,7 +348,7 @@ export default function Prices() {
         addNotification({
           type: 'info',
           title: 'Price Monitoring Stopped',
-          message: `Final stats: ${data.data.finalStats?.opportunitiesDetected || 0} opportunities detected`,
+          message: `${apiChain.toUpperCase()}: ${data.data.finalStats?.opportunitiesDetected || 0} opportunities detected`,
         });
         fetchAll();
       } else {
@@ -536,10 +625,10 @@ export default function Prices() {
                       <Badge variant="default">{spread.sellDex}</Badge>
                     </td>
                     <td className="p-4 text-right font-mono text-matrix-text">
-                      {spread.buyPrice.toFixed(6)}
+                      {formatPrice(spread.buyPrice)}
                     </td>
                     <td className="p-4 text-right font-mono text-matrix-text">
-                      {spread.sellPrice.toFixed(6)}
+                      {formatPrice(spread.sellPrice)}
                     </td>
                     <td className="p-4 text-right">
                       <span
@@ -618,6 +707,16 @@ export default function Prices() {
                     {(price.spreadBps / 100).toFixed(2)}% spread
                   </Badge>
                 </div>
+                {/* Price Sparkline */}
+                <div className="mb-3 flex justify-center">
+                  <PriceSparkline
+                    data={priceHistory.get(price.pair) || []}
+                    width={180}
+                    height={40}
+                    showDirection={true}
+                    showChange={true}
+                  />
+                </div>
                 <div className="space-y-2">
                   {price.dexes.map((dex) => (
                     <div
@@ -626,7 +725,7 @@ export default function Prices() {
                     >
                       <span className="text-matrix-text-muted">{dex.dex}</span>
                       <span className="font-mono text-matrix-text">
-                        {dex.price0.toFixed(6)}
+                        {formatPrice(dex.price0)}
                       </span>
                     </div>
                   ))}

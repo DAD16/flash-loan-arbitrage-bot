@@ -12,9 +12,16 @@
  * - Gas optimization analysis
  * - Formal verification coordination
  * - Audit report generation
+ *
+ * Task Persistence:
+ * - Uses AgentBase for crash-safe task logging
+ * - Call onStartup() to recover incomplete tasks
+ * - Call receiveTask() when given a new audit task
  */
 
 import { Logger } from "winston";
+import { AgentBase, AgentStartupResult } from "../../../shared/src/agentBase.js";
+import type { AgentTask } from "../../../shared/src/taskQueue.js";
 
 // ============ Types ============
 
@@ -528,12 +535,13 @@ export const CURRENT_FINDINGS: AuditFinding[] = [
 
 // ============ ROLAND Agent Class ============
 
-export class Roland {
+export class Roland extends AgentBase {
   private config: AuditConfig;
   private logger?: Logger;
   private findings: AuditFinding[] = [];
 
   constructor(config: Partial<AuditConfig> = {}, logger?: Logger) {
+    super('ROLAND');
     this.config = {
       scope: [
         {
@@ -565,6 +573,48 @@ export class Roland {
     this.logger = logger;
     this.findings = [...CURRENT_FINDINGS];
   }
+  /**
+   * Initialize ROLAND and recover any incomplete tasks.
+   */
+  async initialize(): Promise<AgentStartupResult> {
+    const result = await this.onStartup();
+    if (result.currentTask) {
+      this.logger?.info(`ROLAND resuming task: ${result.currentTask.taskDescription}`);
+    }
+    return result;
+  }
+
+  /**
+   * Start a new audit task. Saved IMMEDIATELY for crash recovery.
+   */
+  async startAuditTask(
+    description: string,
+    rawInput?: string
+  ): Promise<AgentTask> {
+    const task = await this.receiveTask(description, {
+      rawInput: rawInput || description,
+      priority: 'normal',
+      metadata: { type: 'audit' },
+    });
+    await this.startTask(task.id);
+    return task;
+  }
+
+  /**
+   * Complete the current audit task.
+   */
+  async finishAuditTask(result: string): Promise<void> {
+    await this.completeTask(undefined, result);
+  }
+
+  /**
+   * Get what ROLAND is currently working on.
+   */
+  async whatAmIWorkingOn(): Promise<string | null> {
+    const task = await this.getCurrentTask();
+    return task ? task.taskDescription : null;
+  }
+
 
   /**
    * Get all audit tools

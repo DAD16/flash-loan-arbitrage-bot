@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Save, RotateCcw, AlertTriangle, Zap, Fuel, Shield } from 'lucide-react';
+import { Save, RotateCcw, AlertTriangle, Zap, Fuel, Shield, Settings2, ListOrdered } from 'lucide-react';
 import Card, { CardHeader } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import ExecutionConfigPanel, { ExecutionConfig } from '../components/ExecutionConfigPanel';
+import ExecutionQueue from '../components/ExecutionQueue';
 import { useCurrentStrategy, useDexes, useTokens, useSaveStrategy } from '../hooks/useApi';
 import { useStore } from '../store/useStore';
 import clsx from 'clsx';
@@ -26,6 +28,40 @@ export default function Strategy() {
     consecutiveFailures: 5,
     cooldownSeconds: 300,
   });
+
+  // Execution config state
+  const [executionConfig, setExecutionConfig] = useState<ExecutionConfig | null>(null);
+
+  // Execution queue state
+  const [queuePaused, setQueuePaused] = useState(false);
+
+  // Handle execution config changes
+  const handleExecutionConfigChange = (config: ExecutionConfig) => {
+    setExecutionConfig(config);
+    console.log('Execution config updated:', config);
+    // TODO: Save to backend via API
+  };
+
+  // Handle queue actions
+  const handleQueuePauseToggle = () => {
+    setQueuePaused(!queuePaused);
+    // TODO: Call API to pause/resume queue
+  };
+
+  const handleCancelQueueItem = (itemId: string) => {
+    console.log('Cancel queue item:', itemId);
+    // TODO: Call API to cancel item
+  };
+
+  const handleRetryQueueItem = (itemId: string) => {
+    console.log('Retry queue item:', itemId);
+    // TODO: Call API to retry item
+  };
+
+  const handleClearCompleted = () => {
+    console.log('Clear completed items');
+    // TODO: Call API to clear completed items
+  };
 
   const handleSave = async () => {
     try {
@@ -90,6 +126,33 @@ export default function Strategy() {
             <Save className="w-4 h-4" />
             {saveStrategy.isPending ? 'Saving...' : 'Save Changes'}
           </button>
+        </div>
+      </div>
+
+      {/* Execution Configuration and Queue */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+        {/* Execution Configuration Panel - takes 2 columns */}
+        <div className="xl:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Settings2 className="w-5 h-5 text-matrix-primary" />
+            <h2 className="text-lg font-semibold text-matrix-text">Execution Configuration</h2>
+          </div>
+          <ExecutionConfigPanel onConfigChange={handleExecutionConfigChange} />
+        </div>
+
+        {/* Execution Queue - takes 1 column */}
+        <div className="xl:col-span-1">
+          <div className="flex items-center gap-2 mb-4">
+            <ListOrdered className="w-5 h-5 text-matrix-warning" />
+            <h2 className="text-lg font-semibold text-matrix-text">Execution Queue</h2>
+          </div>
+          <ExecutionQueue
+            isPaused={queuePaused}
+            onPauseToggle={handleQueuePauseToggle}
+            onCancelItem={handleCancelQueueItem}
+            onRetryItem={handleRetryQueueItem}
+            onClearCompleted={handleClearCompleted}
+          />
         </div>
       </div>
 

@@ -322,6 +322,34 @@ export function usePerformanceSummary() {
   });
 }
 
+// Multi-Chain Stats Hook
+export interface ChainStats {
+  chainId: string;
+  chainName: string;
+  status: 'online' | 'degraded' | 'offline';
+  rpcLatencyMs: number;
+  currentGasPrice: number;
+  blockTime: number;
+  activePairs: number;
+  isMonitoring: boolean;
+  opportunityCount: number;
+  best24hSpread: number;
+  profit24h: number;
+}
+
+export function useMultiChainStats() {
+  const autoRefresh = useStore((state) => state.autoRefresh);
+
+  return useQuery({
+    queryKey: ['chains', 'stats'],
+    queryFn: async () => {
+      const { data } = await api.get<{ data: ChainStats[] }>('/chains/stats');
+      return data.data;
+    },
+    refetchInterval: autoRefresh ? 30000 : false, // Refresh every 30s
+  });
+}
+
 // Mutations
 export function useApplyRecommendation() {
   const queryClient = useQueryClient();
